@@ -607,3 +607,42 @@ body {
     }
     
 }
+/* === AJOUTS === */
+
+/* Carton noir visible dans l'UI */
+.card-counter:last-child {
+    display: flex !important;
+}
+
+/* Bouton UNDO amélioré */
+.undo-btn {
+    background-color: #2a2a2a !important;
+    color: #aaa !important;
+    border: 2px dashed #555 !important;
+    font-size: 16px !important;
+    width: 100%;
+    transition: background-color 0.2s, color 0.2s !important;
+}
+.undo-btn:hover {
+    background-color: #3a3a3a !important;
+    color: #eee !important;
+}
+.undo-btn:active {
+    transform: scale(0.97);
+}
+
+/* Bouton CAST TV */
+.cast-btn {
+    background-color: #1a3a5c !important;
+    color: #5af !important;
+    border-color: #5af !important;
+}
+.cast-btn:hover {
+    background-color: #1e4a7a !important;
+}
+
+/* Couleur reset */
+.reset-color {
+    background-color: var(--laser-red) !important;
+    box-shadow: 0 0 15px var(--laser-red) !important;
+}

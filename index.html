@@ -5,70 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" type="text/css" href="style.css">
-    <title>REPETEUR ESCRIME ASL-FFE</title>
-    
+    <title>RÉPÉTEUR ESCRIME ASL-FFE</title>
 </head>
 <body>
-   
+
     <div class="main-content">
         <div class="content">
+
             <div id="fighterInfo" class="fighter-info" style="display:none;">
                 <span id="fighter1Name">COMBATTANT 1</span>
                 <span> vs </span>
                 <span id="fighter2Name">COMBATTANT 2</span>
             </div>
 
+            <!-- SCORES -->
             <div class="score-container">
                 <div class="score-side">
                     <div class="score score_red" id="left_score">0</div>
-
                     <div class="card-count-row">
-                        <div class="card-counter" data-card="white">
-                            <span class="card-display card-white" id="left_card_white">0</span>
-                        </div>
-                        <div class="card-counter" data-card="yellow">
-                            <span class="card-display card-yellow" id="left_card_yellow">0</span>
-                        </div>
-                        <div class="card-counter" data-card="red">
-                            <span class="card-display card-red" id="left_card_red">0</span>
-                        </div>
-                        <!--<div class="card-counter" data-card="black">
-                            <span class="card-display card-black" id="left_card_black">0</span>
-                        </div>-->
+                        <div class="card-counter"><span class="card-display card-white" id="left_card_white">0</span></div>
+                        <div class="card-counter"><span class="card-display card-yellow" id="left_card_yellow">0</span></div>
+                        <div class="card-counter"><span class="card-display card-red" id="left_card_red">0</span></div>
+                        <div class="card-counter"><span class="card-display card-black" id="left_card_black">0</span></div>
                     </div>
-
                 </div>
                 <div class="score-side">
                     <div class="score score_green" id="right_score">0</div>
-
                     <div class="card-count-row">
-                        <div class="card-counter" data-card="white">
-                            <span class="card-display card-white" id="right_card_white">0</span>
-                        </div>
-                        <div class="card-counter" data-card="yellow">
-                            <span class="card-display card-yellow" id="right_card_yellow">0</span>
-                        </div>
-                        <div class="card-counter" data-card="red">
-                            <span class="card-display card-red" id="right_card_red">0</span>
-                        </div>
-                       <!-- <div class="card-counter" data-card="black">
-                            <span class="card-display card-black" id="right_card_black">0</span>
-                        </div>-->
+                        <div class="card-counter"><span class="card-display card-white" id="right_card_white">0</span></div>
+                        <div class="card-counter"><span class="card-display card-yellow" id="right_card_yellow">0</span></div>
+                        <div class="card-counter"><span class="card-display card-red" id="right_card_red">0</span></div>
+                        <div class="card-counter"><span class="card-display card-black" id="right_card_black">0</span></div>
                     </div>
-
                 </div>
             </div>
 
-           
+            <!-- BOUTONS POINTS -->
             <div class="score-control-container">
                 <div class="score-side">
                     <div class="button-row">
-                        <button class="point-btn point-btn-a" data-player="left" data-points="1">Zone A<br>(+1)</button>
-                        <button class="point-btn point-btn-b" data-player="left" data-points="3">Zone B<br>(+3)</button>
-                        <button class="point-btn point-btn-c" data-player="left" data-points="5">Zone C<br>(+5)</button>
+                        <button class="point-btn point-btn-a" data-player="left"  data-points="1">Zone A<br>(+1)</button>
+                        <button class="point-btn point-btn-b" data-player="left"  data-points="3">Zone B<br>(+3)</button>
+                        <button class="point-btn point-btn-c" data-player="left"  data-points="5">Zone C<br>(+5)</button>
                     </div>
                 </div>
-                
                 <div class="score-side">
                     <div class="button-row">
                         <button class="point-btn point-btn-a" data-player="right" data-points="1">Zone A<br>(+1)</button>
@@ -78,98 +58,61 @@
                 </div>
             </div>
 
-
-            <div id="medicalChrono" class="medical-timer" style="display:none;">
-                <span id="medicalTimerDisplay">05:00</span>
+            <!-- CHRONO -->
+            <div class="chrono-container">
+                <div id="matchChrono" class="timer-display">03:00</div>
+                <div id="chronoControls" class="button-row force-hide">
+                    <button id="customTimeBtn" class="timer-button">RÉGLER TEMPS</button>
+                    <button id="quickTimer30s" class="timer-button">30 SEC</button>
+                    <button id="medicalBreakBtn" class="timer-button">PAUSE MED</button>
+                    <button id="castBtn" class="timer-button cast-btn">📺 CAST TV</button>
+                </div>
             </div>
 
-        <div class="chrono-container">
-            <div id="matchChrono" class="timer-display">03:00</div> 
-            
-            <div id="chronoControls" class="button-row force-hide"> 
-                <button id="customTimeBtn" class="timer-button">RÉGLER TEMPS</button>
-                <button id="quickTimer30s" class="timer-button">30 SEC</button>
-                <button id="medicalBreakBtn" class="timer-button">PAUSE MED</button>
-                <button id="chronoConfigBtn" class="timer-button">CONFIG</button>
+            <!-- FAUTES -->
+            <div class="card-penalty-wrapper">
+                <div class="fault-controls">
+                    <div class="score-side">
+                        <div class="button-row fault-row-container">
+                            <button class="fault-btn card-button card-white"  data-player="left"  data-group="1">Faute Grp 1</button>
+                            <button class="fault-btn card-button card-yellow" data-player="left"  data-group="2">Faute Grp 2</button>
+                            <button class="fault-btn card-button card-red"    data-player="left"  data-group="3">Faute Grp 3</button>
+                            <button class="fault-btn card-button card-black"  data-player="left"  data-group="4">Faute Grp 4</button>
+                        </div>
+                    </div>
+                    <div class="score-side">
+                        <div class="button-row fault-row-container">
+                            <button class="fault-btn card-button card-white"  data-player="right" data-group="1">Faute Grp 1</button>
+                            <button class="fault-btn card-button card-yellow" data-player="right" data-group="2">Faute Grp 2</button>
+                            <button class="fault-btn card-button card-red"    data-player="right" data-group="3">Faute Grp 3</button>
+                            <button class="fault-btn card-button card-black"  data-player="right" data-group="4">Faute Grp 4</button>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
 
-        
-<div class="card-penalty-wrapper">
-    <div class="fault-controls">
-        <div class="score-side">
-            <div class="button-row fault-row-container">
-                <button class="fault-btn card-button card-white" data-player="left" data-group="1">Faute Grp 1</button>
-                <button class="fault-btn card-button card-yellow" data-player="left" data-group="2">Faute Grp 2</button>
-                <button class="fault-btn card-button card-red" data-player="left" data-group="3">Faute Grp 3</button>
-                <button class="fault-btn card-button card-black" data-player="left" data-group="4">Faute Grp 4</button>
-            </div>
-        </div>
-        <div class="score-side">
-            <div class="button-row fault-row-container">
-                <button class="fault-btn card-button card-white" data-player="right" data-group="1">Faute Grp 1</button>
-                <button class="fault-btn card-button card-yellow" data-player="right" data-group="2">Faute Grp 2</button>
-                <button class="fault-btn card-button card-red" data-player="right" data-group="3">Faute Grp 3</button>
-                <button class="fault-btn card-button card-black" data-player="right" data-group="4">Faute Grp 4</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-
+            <!-- ANNULER -->
             <div class="card-buttons">
-
-                <button id="undoBtn" class="card-button" style="background-color: #555; color: white;">Annuler dernière action</button>
-
+                <button id="undoBtn" class="card-button undo-btn">↩ Annuler dernière action</button>
             </div>
+
         </div>
 
-
-
-
-       <div class="button-row">
-    <button id="resetBtn" class="startStopButton" style="display:none;">RÉINITIALISER</button>
-    <button id="startStopButton" class="startStopButton">START</button>
-    </div>
-    
-
-    <div id="resetConfirmationModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <p>Êtes-vous sûr de vouloir tout réinitialiser?</p>
-            <button id="yesResetBtn" class="modal-button">OUI</button>
-            <button id="noResetBtn" class="modal-button">NON</button>
-        </div>
-    </div>
-    
-    <div id="configModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <h2>CONFIGURATION</h2>
-            <input type="text" id="player1NameInput" placeholder="Nom joueur 1">
-            <input type="text" id="player2NameInput" placeholder="Nom joueur 2">
-            <button id="saveConfigBtn" class="modal-button">Sauvegarder</button>
+        <!-- START / RESET -->
+        <div class="button-row">
+            <button id="resetBtn"       class="startStopButton reset-color" style="display:none;">RÉINITIALISER</button>
+            <button id="startStopButton" class="startStopButton" style="background-color:green;">START</button>
         </div>
     </div>
 
-    <div id="customTimerModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <h2>CHRONO PERSONNALISÉ</h2>
-            <input type="text" id="customTimeInput" placeholder="MM:SS">
-            <button id="setCustomTimeBtn" class="modal-button">Régler</button>
+    <!-- PAUSE MÉDICALE -->
+    <div id="medicalOverlay" class="hidden">
+        <div id="medicalModal">
+            <h1>⚕ PAUSE MÉDICALE</h1>
+            <div id="medicalChrono">05:00</div>
+            <button id="closeMedicalBtn">Reprendre le match</button>
         </div>
     </div>
-
-
-
-<!--Popup pause medical-->
-<div id="medicalOverlay" class="hidden">
-    <div id="medicalModal">
-        <h1>PAUSE MÉDICALE</h1>
-        <div id="medicalChrono">05:00</div>
-        <button id="closeMedicalBtn">Reprendre le match</button>
-    </div>
-</div>
-
 
     <script src="script.js"></script>
 </body>

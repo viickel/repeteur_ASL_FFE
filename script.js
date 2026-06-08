@@ -2,727 +2,527 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ========= VARIABLES GLOBALES =========
     let timerId;
-    let matchTimeInSeconds = 180; // 3 minutes
+    let matchTimeInSeconds = 180;
     let isTimerRunning = false;
     let isMedicalBreak = false;
     let currentMatchScoreLeft = 0;
     let currentMatchScoreRight = 0;
 
     let medicalTimerId;
-    let medicalTimeInSeconds = 300; // 5 minutes
+    let medicalTimeInSeconds = 300;
 
     const medicalOverlay = document.getElementById('medicalOverlay');
-    const medicalChronoDisplay = document.getElementById('medicalChrono'); 
+    const medicalChronoDisplay = document.getElementById('medicalChrono');
     const closeMedicalBtn = document.getElementById('closeMedicalBtn');
 
-    // Historique des actions pour l'annulation
+    // Historique des actions pour l'annulation (état complet)
     const scoreHistory = [];
-    const MAX_HISTORY_SIZE = 30; 
+    const MAX_HISTORY_SIZE = 30;
 
-    // Historique des sanctions pour suivre les groupes de fautes
-const penalties = {
-    // Joueur Gauche (Combattant 1)
-    left: {
-        group1: 0, // 0 = Pas de faute, 1 = Carton Blanc, 2 = Carton Jaune, 3+ = Carton Jaune (Règle : Blanc -> Jaune -> Jaune...)
-        group2: 0, // 0 = Pas de faute, 1 = Carton Jaune, 2 = Carton Rouge, 3+ = Carton Rouge (Règle : Jaune -> Rouge -> Rouge...)
-        group3: 0, // 0 = Pas de faute, 1 = Carton Rouge, 2+ = Carton Noir (Règle : Rouge -> Noir)
-        group4: 0, // 0 = Pas de faute, 1 = Carton Noir
-    },
-    // Joueur Droit (Combattant 2)
-    right: {
-        group1: 0,
-        group2: 0,
-        group3: 0,
-        group4: 0,
+    // Historique des sanctions
+    const penalties = {
+        left:  { group1: 0, group2: 0, group3: 0, group4: 0 },
+        right: { group1: 0, group2: 0, group3: 0, group4: 0 }
+    };
+
+    // BroadcastChannel pour le cast TV (même origine uniquement)
+    let broadcastChannel = null;
+    try {
+        broadcastChannel = new BroadcastChannel('asl_scoreboard');
+    } catch(e) {
+        console.warn('BroadcastChannel non supporté:', e);
     }
-};  
 
     // ========= SÉLECTION DES ÉLÉMENTS DU DOM =========
     const matchChronoDisplay = document.getElementById('matchChrono');
-    const customTimeBtn = document.getElementById('customTimeBtn'); 
-    const quickTimer30s = document.getElementById('quickTimer30s'); 
-    const startStopButton = document.getElementById('startStopButton');
-    const resetBtn = document.getElementById('resetBtn');
-    const leftScoreDisplay = document.getElementById('left_score');
-    const rightScoreDisplay = document.getElementById('right_score');
-    const chronoControls = document.getElementById('chronoControls'); 
+    const customTimeBtn      = document.getElementById('customTimeBtn');
+    const quickTimer30s      = document.getElementById('quickTimer30s');
+    const startStopButton    = document.getElementById('startStopButton');
+    const resetBtn           = document.getElementById('resetBtn');
+    const leftScoreDisplay   = document.getElementById('left_score');
+    const rightScoreDisplay  = document.getElementById('right_score');
+    const chronoControls     = document.getElementById('chronoControls');
+    const medicalBreakBtn    = document.getElementById('medicalBreakBtn');
+    const undoBtn            = document.getElementById('undoBtn');
+    const faultButtons       = document.querySelectorAll('.fault-btn');
+    const pointButtons       = document.querySelectorAll('.point-btn');
+    const castBtn            = document.getElementById('castBtn');
 
-    
-
-  
-    // Autres boutons
-    
-    const medicalBreakBtn = document.getElementById('medicalBreakBtn');
-    const chronoConfigBtn = document.getElementById('chronoConfigBtn');
-    const whiteCardBtn = document.getElementById('whiteCardBtn');
-    const yellowCardBtn = document.getElementById('yellowCardBtn');
-    const redCardBtn = document.getElementById('redCardBtn');
-    const blackCardBtn = document.getElementById('blackCardBtn');
-    const undoBtn = document.getElementById('undoBtn');
-    const faultButtons = document.querySelectorAll('.fault-btn');
-
-    // Récupération de tous les boutons de points et de cartes
-    const pointButtons = document.querySelectorAll('.point-btn');
-    const cardButtons = document.querySelectorAll('.card-button');
-
-    
+    // ========= BROADCAST (CAST TV) =========
+    function broadcastState() {
+        if (!broadcastChannel) return;
+        broadcastChannel.postMessage({
+            type: 'state',
+            left:  currentMatchScoreLeft,
+            right: currentMatchScoreRight,
+            time:  formatTime(matchTimeInSeconds),
+            running: isTimerRunning,
+            penalties: JSON.parse(JSON.stringify(penalties))
+        });
+    }
 
     // ========= FONCTIONS DE BASE =========
-
     function formatTime(totalSeconds) {
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        const m = Math.floor(totalSeconds / 60);
+        const s = totalSeconds % 60;
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     }
 
-     // Fonction pour régler le temps (ajustez si votre fonction s'appelle différemment)
     function setMatchTime(seconds) {
-        clearInterval(timerId); // Arrête le chrono s'il était en cours
+        clearInterval(timerId);
         isTimerRunning = false;
-        
         matchTimeInSeconds = seconds;
         matchChronoDisplay.textContent = formatTime(matchTimeInSeconds);
-        
-        //  Mise à jour de l'état du bouton Start/Pause
         startStopButton.textContent = 'START';
         startStopButton.style.backgroundColor = 'green';
+        broadcastState();
     }
-    
+
+    /**
+     * Sauvegarde l'état COMPLET dans l'historique.
+     * À appeler UNE SEULE FOIS par action utilisateur.
+     */
     function saveStateToHistory() {
-    if (scoreHistory.length >= MAX_HISTORY_SIZE) {
-        scoreHistory.shift(); 
+        if (scoreHistory.length >= MAX_HISTORY_SIZE) {
+            scoreHistory.shift();
+        }
+        scoreHistory.push({
+            left:      currentMatchScoreLeft,
+            right:     currentMatchScoreRight,
+            penalties: JSON.parse(JSON.stringify(penalties))
+        });
     }
-    scoreHistory.push({
-        left: currentMatchScoreLeft,
-        right: currentMatchScoreRight,
-        // NOUVEAU : On stocke une COPIE (Deep Clone) des pénalités
-        penalties: JSON.parse(JSON.stringify(penalties))
-    });
-}
-    
 
-/**
- * Met à jour l'affichage visuel des compteurs de cartons.
- * Doit être appelée après chaque sanction, reset ou undo.
- */
-function updateCardDisplay() {
-    ['left', 'right'].forEach(player => {
-        const p = penalties[player]; 
+    function updateCardDisplay() {
+        ['left', 'right'].forEach(player => {
+            const p = penalties[player];
+            let countWhite  = 0;
+            let countYellow = 0;
+            let countRed    = 0;
+            let countBlack  = 0;
 
-        // Initialisation des comptes affichés
-        let countWhite = 0;
-        let countYellow = 0;
-        let countRed = 0;
-        let countBlack = 0; // Seul le carton noir est cumulable dans l'affichage (si Groupe 3 ou Groupe 4)
+            if (p.group1 >= 1) countWhite = 1;
+            if (p.group1 >= 2) countYellow += p.group1 - 1;
 
-        // =========================================================================
-        // 1. DÉTERMINATION DE L'AFFICHAGE (LE BUG EST CORRIGÉ ICI)
-        // La logique est: le carton le plus sévère prime.
-        // =========================================================================
+            if (p.group2 >= 1) countYellow += 1;
+            if (p.group2 >= 2) countRed    += p.group2 - 1;
 
-        // Groupe 1 (Faute Légère)
-        // 1ère faute Grp 1: Carton Blanc
-        if (p.group1 >= 1) {
-            countWhite = 1;
-        }
-        // 2ème faute Grp 1 et suivantes: Carton Jaune
-        if (p.group1 >= 2) {
-            // Le blanc est effacé par le jaune dans cette progression
-            countYellow += p.group1 - 1; 
-        }
+            if (p.group3 >= 1) countRed    += 1;
+            if (p.group3 >= 2) countBlack  += 1;
 
-        // Groupe 2 (Faute Moyenne)
-        // 1ère faute Grp 2: Carton Jaune (1er Jaune direct ou +1 aux jaunes cumulés)
-        if (p.group2 >= 1) {
-            // On ajoute la 1ère faute Grp 2 (qui est un Jaune)
-            countYellow += 1; 
-        }
-        // 2ème faute Grp 2 et suivantes: Carton Rouge
-        if (p.group2 >= 2) {
-            // Le Jaune est effacé par le Rouge dans cette progression
-            countRed += p.group2 - 1; 
-        }
-        
-        // Groupe 3 (Faute Sévère)
-        // 1ère faute Grp 3: Carton Rouge (1er Rouge direct ou +1 aux Rouges cumulés)
-        if (p.group3 >= 1) {
-            countRed += 1;
-        }
-        // 2ème faute Grp 3 (et match terminé): Carton Noir
-        if (p.group3 >= 2) {
-            // Le Rouge est effacé par le Noir (et le match est terminé)
-            countBlack += 1;
-        }
+            if (p.group4 >= 1) countBlack  += 1;
 
-        // Groupe 4 (Faute d'Exclusion Directe)
-        // 1ère faute Grp 4: Carton Noir
-        if (p.group4 >= 1) {
-            countBlack += 1; 
-        }
-        
-        // =========================================================================
-        // 2. MISE À JOUR DU DOM (Reste inchangé)
-        // =========================================================================
-        
-        const cards = {
-            white: countWhite,
-            yellow: countYellow,
-            red: countRed,
-            black: countBlack,
-        };
+            const cards = { white: countWhite, yellow: countYellow, red: countRed, black: countBlack };
 
-        for (const cardType in cards) {
-            const displayElement = document.getElementById(`${player}_card_${cardType}`);
-            if (displayElement) {
+            for (const cardType in cards) {
+                const el = document.getElementById(`${player}_card_${cardType}`);
+                if (!el) continue;
                 const count = cards[cardType];
-                displayElement.textContent = count;
-                
-                // Opacité : si le compte > 0, l'opacité est à 1 (visible), sinon à 0.2 (faible)
-                // Seul le blanc est affiché si count=1, les autres affichent le nombre de cartons.
-                const opacityValue = (count > 0 ? 1 : 0.2);
-                displayElement.style.opacity = opacityValue;
-
-                // Afficher le compte des cartons 
-                if (count === 0) {
-                    displayElement.textContent = '0';
-                    } else {
-                    displayElement.textContent = count;
-                }
+                el.textContent = count;
+                el.style.opacity = count > 0 ? '1' : '0.2';
             }
-        }
-    });
-} 
-    function updateScore(player, points) {
-        saveStateToHistory(); 
+        });
+    }
 
+    /**
+     * Met à jour le score SANS sauvegarder dans l'historique.
+     * La sauvegarde est faite en amont par l'appelant.
+     */
+    function applyScore(player, points) {
         if (player === 'left') {
-            currentMatchScoreLeft += points;
-            if (currentMatchScoreLeft < 0) currentMatchScoreLeft = 0;
+            currentMatchScoreLeft = Math.max(0, currentMatchScoreLeft + points);
             leftScoreDisplay.textContent = currentMatchScoreLeft;
         } else if (player === 'right') {
-            currentMatchScoreRight += points;
-            if (currentMatchScoreRight < 0) currentMatchScoreRight = 0;
+            currentMatchScoreRight = Math.max(0, currentMatchScoreRight + points);
             rightScoreDisplay.textContent = currentMatchScoreRight;
         }
     }
-    
-    
+
     /**
- * Annule la dernière action en restaurant l'état précédent du match.
- * Cela inclut les scores et les pénalités.
- */
-function undoLastAction() {
-    // 1. On vérifie s'il y a des actions à annuler
-    if (scoreHistory.length > 0) {
-        // 2. On récupère le dernier état sauvegardé et on le retire de l'historique
-        const previousState = scoreHistory.pop();
+     * Annule la dernière action (UN SEUL pop = UN SEUL undo).
+     */
+    function undoLastAction() {
+        if (scoreHistory.length === 0) {
+            console.log('Historique vide.');
+            return;
+        }
+        const prev = scoreHistory.pop();
+        currentMatchScoreLeft  = prev.left;
+        currentMatchScoreRight = prev.right;
+        penalties.left  = { ...prev.penalties.left };
+        penalties.right = { ...prev.penalties.right };
 
-        // 3. On restaure les variables du jeu avec les valeurs de l'historique
-        currentMatchScoreLeft = previousState.left;
-        currentMatchScoreRight = previousState.right;
-
-        // C'est la partie cruciale pour les cartons :
-        // On restaure l'objet "penalties" avec le contenu sauvegardé
-        // L'opérateur de décomposition (...) est essentiel pour une copie profonde
-        penalties.left = { ...previousState.penalties.left };
-        penalties.right = { ...previousState.penalties.right };
-
-        // 4. On met à jour l'affichage de l'interface
-        leftScoreDisplay.textContent = currentMatchScoreLeft;
+        leftScoreDisplay.textContent  = currentMatchScoreLeft;
         rightScoreDisplay.textContent = currentMatchScoreRight;
-        updateCardDisplay(); // Cette fonction met à jour les compteurs de cartons
-
-        console.log("Dernière action annulée. Retour à l'état précédent.");
-    } else {
-        console.log("Historique vide. Aucune action à annuler.");
+        updateCardDisplay();
+        broadcastState();
+        console.log('Dernière action annulée.');
     }
-}
 
-    
+    // ========= CHRONOMÈTRE =========
     function startStopTimer() {
         if (isTimerRunning) {
-            clearInterval(timerId); 
+            clearInterval(timerId);
             startStopButton.textContent = 'START';
             startStopButton.style.backgroundColor = 'green';
             isTimerRunning = false;
-            resetBtn.style.display = 'block'; 
+            resetBtn.style.display = 'block';
         } else {
-            timerId = setInterval(updateTimer, 1000); 
+            if (matchTimeInSeconds <= 0) return; // ne pas relancer si terminé
+            timerId = setInterval(updateTimer, 1000);
             startStopButton.textContent = 'PAUSE';
             startStopButton.style.backgroundColor = 'red';
             isTimerRunning = true;
             resetBtn.style.display = 'none';
         }
+        broadcastState();
     }
 
     function updateTimer() {
         if (matchTimeInSeconds > 0) {
             matchTimeInSeconds--;
-            const minutes = Math.floor(matchTimeInSeconds / 60);
-            const seconds = matchTimeInSeconds % 60;
-            matchChronoDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            matchChronoDisplay.textContent = formatTime(matchTimeInSeconds);
+            broadcastState();
         } else {
             clearInterval(timerId);
             isTimerRunning = false;
             startStopButton.textContent = 'FIN DU MATCH';
             startStopButton.style.backgroundColor = 'gray';
+            resetBtn.style.display = 'block';
+            broadcastState();
         }
     }
-    
+
     function resetMatch() {
+        if (!confirm('Réinitialiser le match ?')) return;
         clearInterval(timerId);
+        clearInterval(medicalTimerId);
         isTimerRunning = false;
         isMedicalBreak = false;
-        currentMatchScoreLeft = 0;
+        currentMatchScoreLeft  = 0;
         currentMatchScoreRight = 0;
         matchTimeInSeconds = 180;
+        medicalTimeInSeconds = 300;
 
-        penalties.left = {
-                group1: 0,
-                group2: 0,
-                group3: 0,
-                group4: 0,
-            };
-                penalties.right = {
-                group1: 0,
-                group2: 0,
-                group3: 0,
-                group4: 0,
+        penalties.left  = { group1: 0, group2: 0, group3: 0, group4: 0 };
+        penalties.right = { group1: 0, group2: 0, group3: 0, group4: 0 };
+        scoreHistory.length = 0;
 
-                
-            };
-
-
-    clearInterval(medicalTimerId);
-    isMedicalBreak = false;
-    medicalTimeInSeconds = 300;
-        
-        leftScoreDisplay.textContent = '0';
+        leftScoreDisplay.textContent  = '0';
         rightScoreDisplay.textContent = '0';
         matchChronoDisplay.textContent = '03:00';
         startStopButton.textContent = 'START';
         startStopButton.style.backgroundColor = 'green';
         resetBtn.style.display = 'none';
+
+        medicalOverlay.classList.add('hidden');
         updateCardDisplay();
-
-        
-
-
+        broadcastState();
     }
 
+    // ========= LOGIQUE FAUTES =========
+    /**
+     * FIX BUG PRINCIPAL : saveStateToHistory() est appelé UNE SEULE FOIS ici.
+     * applyScore() ne sauvegarde plus dans l'historique.
+     */
+    function determineCardAndPoints(player, group) {
+        // Sauvegarde unique AVANT toute modification
+        saveStateToHistory();
 
+        let card = '';
+        let points = 0;
+        let endsMatch = false;
+        const opponent = player === 'left' ? 'right' : 'left';
 
-/**
- * Détermine le carton à donner et le nombre de points à attribuer.
- * Met à jour le compteur de fautes pour le groupe donné.
- * @param {string} player - 'left' ou 'right'
- * @param {number} group - Le groupe de faute (1, 2, 3, ou 4)
- * @returns {object} { card: string, points: number, endsMatch: boolean }
- */
-function determineCardAndPoints(player, group) {
-   saveStateToHistory();
+        if (group !== 4) {
+            penalties[player]['group' + group]++;
+        }
+        const faultLevel = penalties[player]['group' + group];
 
-    let card = '';
-    let points = 0;
-    let endsMatch = false;
-    let faultLevel = penalties[player]['group' + group];
-    
-    // La faute est appliquée au joueur ADVERSE
-    const opponent = player === 'left' ? 'right' : 'left';
-
-    // 1. Mise à jour du niveau de faute
-    if (group !== 4) { // Le groupe 4 est toujours un Carton Noir, on n'incrémente pas son niveau
-        penalties[player]['group' + group]++;
-        faultLevel = penalties[player]['group' + group]; // Nouveau niveau après incrémentation
-    }
-
-    // 2. Détermination de la carte et des points
-    switch (group) {
-        case 1:
-            // Règle : Carton Blanc (1ère faute), puis Carton Jaune (2ème faute et suivantes)
-            if (faultLevel === 1) {
-                card = 'white';
-                points = 0; // Le Carton Blanc n'attribue pas de points
-            } else {
-                card = 'yellow';
-                points = 3; 
-            }
-            break;
-
-        case 2:
-            // Règle : Carton Jaune (1ère faute), puis Carton Rouge (2ème faute et suivantes)
-            if (faultLevel === 1) {
-                card = 'yellow';
-                points = 3;
-            } else {
-                card = 'red';
-                points = 5;
-            }
-            break;
-
-        case 3:
-            // Règle : Carton Rouge (1ère faute), puis Carton Noir (2ème faute)
-            if (faultLevel === 1) {
-                card = 'red';
-                points = 5;
-            } else {
+        switch (group) {
+            case 1:
+                if (faultLevel === 1) { card = 'white'; points = 0; }
+                else                  { card = 'yellow'; points = 3; }
+                break;
+            case 2:
+                if (faultLevel === 1) { card = 'yellow'; points = 3; }
+                else                  { card = 'red'; points = 5; }
+                break;
+            case 3:
+                if (faultLevel === 1) { card = 'red'; points = 5; }
+                else                  { card = 'black'; endsMatch = true; }
+                break;
+            case 4:
+                penalties[player]['group4']++; // groupe 4 s'incrémente quand même
                 card = 'black';
-                //points = 0; // Pénalité maximale - AJOUTER POINTS SI NÉCESSAIRE
                 endsMatch = true;
-            }
-            break;
+                break;
+            default:
+                console.error('Groupe invalide:', group);
+                return { card: '', points: 0, endsMatch: false };
+        }
 
-        case 4:
-            // Règle : Toujours un Carton Noir
-            card = 'black';
-            //points = 5; // Pénalité maximale - AJOUTER POINTS SI NÉCESSAIRE
-            endsMatch = true;
-            break;
+        if (points > 0) {
+            applyScore(opponent, points);
+        }
 
-        default:
-            console.error("Groupe de faute invalide :", group);
-            return { card: '', points: 0, endsMatch: false };
+        updateCardDisplay();
+        broadcastState();
+        return { card, points, endsMatch };
     }
-    
-    // Attribuer les points à l'adversaire (sauf pour le carton blanc)
-    if (points > 0) {
-        updateScore(opponent, points);
-    }
-    
-    return { card: card, points: points, endsMatch: endsMatch };
-}
 
-/**
- * Gère la fin du match par élimination (Carton Noir).
- * Arrête le temps et affiche une alerte.
- * @param {string} player - Le joueur éliminé ('left' ou 'right').
- */
-function handleElimination(player) {
-    // 1. Arrêter le chronomètre
-    if (isTimerRunning) {
-        clearInterval(timerId); 
-        isTimerRunning = false;
+    function handleElimination(player) {
+        if (isTimerRunning) {
+            clearInterval(timerId);
+            isTimerRunning = false;
+        }
         startStopButton.textContent = 'MATCH TERMINÉ';
         startStopButton.style.backgroundColor = 'gray';
-        resetBtn.style.display = 'block'; 
+        resetBtn.style.display = 'block';
+
+        const winner    = player === 'left' ? 'Combattant Vert (droite)' : 'Combattant Rouge (gauche)';
+        const eliminated = player === 'left' ? 'Combattant Rouge (gauche)' : 'Combattant Vert (droite)';
+
+        showNotification(`⬛ CARTON NOIR — ${eliminated} éliminé(e)\n🏆 Victoire de ${winner}`, 'black');
     }
 
-    // 2. Déterminer l'adversaire (le gagnant)
-    const winner = player === 'left' ? 'Combattant Vert' : 'Combattant Rouge';
-    const eliminated = player === 'left' ? 'Combattant Rouge' : 'Combattant Vert';
-
-    // 3. Afficher la popup (Utilisez une modale si vous en avez une, sinon alert)
-    
-    // --- OPTION SIMPLE (Alert) ---
-    alert(`CARON NOIR ! Élimination de ${eliminated}.\nVictoire par élimination de ${winner}.`);
-    // ----------------------------
-
-    // --- OPTION COMPLEXE (Si vous avez une modale/overlay pour le Carton Noir, comme '#blackOverlay') ---
-    /*
-    const blackOverlay = document.getElementById('blackOverlay');
-    if (blackOverlay) {
-        // Personnalisez le message à l'intérieur de l'overlay avant de l'afficher
-        blackOverlay.querySelector('h2').textContent = `ÉLIMINATION de ${eliminated} !`;
-        blackOverlay.style.display = 'flex'; // ou 'block' selon votre CSS
-        // Ajoutez un écouteur pour fermer la modale si nécessaire
+    // ========= NOTIFICATION (remplace alert) =========
+    function showNotification(message, color) {
+        let overlay = document.getElementById('notifOverlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'notifOverlay';
+            overlay.style.cssText = `
+                position:fixed; top:0; left:0; width:100%; height:100%;
+                background:rgba(0,0,0,0.85); display:flex;
+                justify-content:center; align-items:center; z-index:2000;
+                cursor:pointer;
+            `;
+            overlay.addEventListener('click', () => overlay.remove());
+            document.body.appendChild(overlay);
+        }
+        const colorMap = { black: '#111', red: '#ff004c', yellow: '#e4c700', white: '#f0f6fc' };
+        const textColor = (color === 'white' || color === 'yellow') ? '#111' : '#fff';
+        overlay.innerHTML = `
+            <div style="
+                background:${colorMap[color] || '#222'};
+                color:${textColor};
+                padding:2em 3em; border-radius:15px; text-align:center;
+                font-size:1.5em; font-weight:bold; max-width:80%;
+                border: 3px solid rgba(255,255,255,0.3);
+                white-space: pre-line;
+            ">
+                ${message}
+                <div style="margin-top:1em; font-size:0.6em; opacity:0.7;">Appuyez pour fermer</div>
+            </div>
+        `;
+        overlay.style.display = 'flex';
     }
-    */
-}
+
+    // ========= PAUSE MÉDICALE =========
+    function startMedicalBreak() {
+        if (isMedicalBreak) return;
+        if (isTimerRunning) {
+            clearInterval(timerId);
+            isTimerRunning = false;
+            startStopButton.textContent = 'START';
+            startStopButton.style.backgroundColor = 'green';
+        }
+        isMedicalBreak = true;
+        medicalOverlay.classList.remove('hidden');
+
+        let popupTime = 300;
+        medicalChronoDisplay.textContent = formatTime(popupTime);
+
+        medicalTimerId = setInterval(() => {
+            popupTime--;
+            medicalChronoDisplay.textContent = formatTime(popupTime);
+            if (popupTime <= 0) endMedicalBreak();
+        }, 1000);
+    }
+
+    function endMedicalBreak() {
+        clearInterval(medicalTimerId);
+        medicalOverlay.classList.add('hidden');
+        isMedicalBreak = false;
+        showNotification('Fin de la pause médicale !\nLe match reprend.', 'white');
+        setTimeout(() => {
+            document.getElementById('notifOverlay')?.remove();
+            if (!isTimerRunning) startStopTimer();
+        }, 2000);
+    }
+
+    // ========= TEMPS PERSONNALISÉ =========
+    function promptForCustomTime() {
+        const userInput = prompt('Entrez la durée du match (format MM:SS, ex: 05:00) :');
+        if (!userInput) return;
+        const match = userInput.match(/^(\d{1,2}):(\d{2})$/);
+        if (match) {
+            const m = parseInt(match[1], 10);
+            const s = parseInt(match[2], 10);
+            if (s >= 60) { alert('Les secondes doivent être < 60.'); return; }
+            setMatchTime(m * 60 + s);
+        } else {
+            alert('Format invalide. Utilisez MM:SS (ex: 03:00).');
+        }
+    }
+
+    // ========= CAST TV =========
+    function openScoreboard() {
+        const url = new URL(window.location.href);
+        url.searchParams.set('mode', 'tv');
+        window.open(url.toString(), '_blank', 'noopener');
+    }
 
     // ========= ÉCOUTEURS D'ÉVÉNEMENTS =========
     startStopButton.addEventListener('click', startStopTimer);
     resetBtn.addEventListener('click', resetMatch);
-    undoBtn.addEventListener('click', undoLastAction); // Écouteur pour le bouton UNDO
-
-    // Écouteurs pour les boutons de points (un seul bloc suffit)
-    pointButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const player = button.dataset.player;
-            const points = parseInt(button.dataset.points, 10);
-            updateScore(player, points);
-        });
-    });
-
-
-    //Afficher/Masquer les contrôles du chrono au clic sur l'affichage du chrono
-    matchChronoDisplay.addEventListener('click', () => {
-        // La méthode 'toggle' est la plus simple pour ajouter ou supprimer une classe
-        chronoControls.classList.toggle('force-hide'); 
-    });
-
-
-
-    //Écouteur pour les  boutons de faute (Faute Grp 1, 2, 3, 4)
-    faultButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            
-
-            const player = button.dataset.player; 
-            const group = parseInt(button.dataset.group, 10); 
-            
-            // 1. Détermine la sanction, met à jour le score et l'historique de faute
-            const sanction = determineCardAndPoints(player, group);
-
-            // Update du compteur de carton
-            updateCardDisplay(); 
-            
-            // 2. Gère la fin du match si carton noir
-            if (sanction.endsMatch) {
-                // APPEL DE LA NOUVELLE FONCTION D'ÉLIMINATION ICI
-                handleElimination(player); 
-            }
-            
-            // 3. Affichage console
-            console.log(`Combattant ${player} a reçu un ${sanction.card.toUpperCase()} (Groupe ${group}). Points pour l'adversaire : ${sanction.points}`);
-        });
-    });
-
-
-    // Écouteur pour le bouton de pause médicale
+    undoBtn.addEventListener('click', undoLastAction);
     medicalBreakBtn.addEventListener('click', startMedicalBreak);
-
-    // Nouvel écouteur pour fermer la modale médicale manuellement
     closeMedicalBtn.addEventListener('click', endMedicalBreak);
+    quickTimer30s.addEventListener('click', () => setMatchTime(30));
+    customTimeBtn.addEventListener('click', promptForCustomTime);
+    if (castBtn) castBtn.addEventListener('click', openScoreboard);
 
-
-
-    // 1. Logique pour le bouton 30 SECONDES
-    quickTimer30s.addEventListener('click', () => {
-        setMatchTime(30); // 30 secondes
+    matchChronoDisplay.addEventListener('click', () => {
+        chronoControls.classList.toggle('force-hide');
     });
 
-    // 2. Logique pour le bouton TEMPS PERSONNALISÉ
-    customTimeBtn.addEventListener('click', promptForCustomTime);
+    pointButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            saveStateToHistory();
+            applyScore(btn.dataset.player, parseInt(btn.dataset.points, 10));
+            broadcastState();
+        });
+    });
 
-    function promptForCustomTime() {
-        // 1. Demande du temps à l'utilisateur au format MM:SS
-        const userInput = prompt("Entrez la nouvelle durée du match (au format MM:SS, ex: 05:00) :");
+    faultButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const player = btn.dataset.player;
+            const group  = parseInt(btn.dataset.group, 10);
+            const sanction = determineCardAndPoints(player, group);
+            if (sanction.endsMatch) handleElimination(player);
+            console.log(`${player} → ${sanction.card.toUpperCase()} (Grp ${group}), +${sanction.points} pts adversaire`);
+        });
+    });
 
-        if (!userInput) {
-            // L'utilisateur a annulé
+    // ========= RACCOURCIS CLAVIER (UNIQUE listener) =========
+    document.addEventListener('keydown', (event) => {
+        if (event.repeat) return;
+
+        const key  = event.key.toLowerCase();
+        const code = event.code;
+
+        // Touches bloquées pour éviter scroll/actions navigateur
+        const blockedKeys = [' ', 'q', 'w', 'e', 'a', 'z', 'b', 'j', 'r', 'n'];
+        if (blockedKeys.includes(key)) event.preventDefault();
+
+        const noMod    = !event.shiftKey && !event.ctrlKey && !event.altKey;
+        const shiftOnly = event.shiftKey && !event.ctrlKey && !event.altKey;
+        const altOnly   = event.altKey && !event.shiftKey && !event.ctrlKey;
+
+        // --- Points ---
+        const pointMap = { 'KeyA': 1, 'KeyQ': 1, 'KeyZ': 3, 'KeyW': 3, 'KeyE': 5 };
+        if (code in pointMap) {
+            if (noMod)    { saveStateToHistory(); applyScore('left',  pointMap[code]); broadcastState(); return; }
+            if (shiftOnly){ saveStateToHistory(); applyScore('right', pointMap[code]); broadcastState(); return; }
+        }
+
+        // --- Cartons ---
+        const cardMap = { 'b': 1, 'j': 2, 'r': 3, 'n': 4 };
+        if (key in cardMap && (noMod || altOnly)) {
+            const player = noMod ? 'left' : 'right';
+            const sanction = determineCardAndPoints(player, cardMap[key]);
+            if (sanction.endsMatch) handleElimination(player);
             return;
         }
 
-        // 2. Validation et extraction (gestion du format MM:SS)
-        const timeRegex = /^(\d{1,2}):(\d{2})$/;
-        const match = userInput.match(timeRegex);
+        // --- Commandes globales ---
+        if (key === ' ')  { startStopTimer(); return; }
+        if (key === 'z' && event.ctrlKey) { event.preventDefault(); undoLastAction(); return; }
+        if (key === 'f5') { event.preventDefault(); resetMatch(); return; }
+    });
 
-        if (match) {
-            const minutes = parseInt(match[1], 10);
-            const seconds = parseInt(match[2], 10);
-            
-            if (seconds >= 60) {
-                alert("Erreur: Les secondes doivent être inférieures à 60.");
-                return;
-            }
+    // ========= MODE TV (si ouvert depuis cast) =========
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') === 'tv') {
+        document.body.innerHTML = '';
+        document.body.style.cssText = 'margin:0; background:#0d1117; color:#c9d1d9; font-family:monospace; overflow:hidden;';
+        document.body.innerHTML = `
+            <div id="tv-view" style="
+                width:100vw; height:100vh; display:flex; flex-direction:column;
+                justify-content:center; align-items:center; gap:20px;
+            ">
+                <div style="display:flex; gap:60px; align-items:center;">
+                    <div style="text-align:center;">
+                        <div style="font-size:16px; color:#ff004c; letter-spacing:3px; margin-bottom:8px;">ROUGE</div>
+                        <div id="tv-left" style="font-size:18vw; font-weight:bold; color:#ff004c; line-height:1;">0</div>
+                        <div id="tv-cards-left" style="display:flex; gap:10px; justify-content:center; margin-top:10px;"></div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div id="tv-chrono" style="font-size:6vw; color:#c9d1d9; font-weight:bold;">03:00</div>
+                        <div id="tv-status" style="font-size:2vw; color:#8b949e; margin-top:5px;">EN ATTENTE</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:16px; color:#0cc346; letter-spacing:3px; margin-bottom:8px;">VERT</div>
+                        <div id="tv-right" style="font-size:18vw; font-weight:bold; color:#0cc346; line-height:1;">0</div>
+                        <div id="tv-cards-right" style="display:flex; gap:10px; justify-content:center; margin-top:10px;"></div>
+                    </div>
+                </div>
+            </div>
+        `;
 
-            // 3. Conversion en secondes et mise à jour
-            const totalSeconds = (minutes * 60) + seconds;
-            setMatchTime(totalSeconds);
+        const cardColors = { white: '#f0f6fc', yellow: '#e4c700', red: '#ff004c', black: '#111' };
+        const cardText   = { white: '#111', yellow: '#111', red: '#fff', black: '#fff' };
+
+        function renderCards(containerId, penalties) {
+            const el = document.getElementById(containerId);
+            if (!el) return;
+            const p = penalties;
+            let cards = [];
+            if (p.group1 >= 1) cards.push('white');
+            for (let i = 1; i < p.group1; i++) cards.push('yellow');
+            if (p.group2 >= 1) cards.push('yellow');
+            for (let i = 1; i < p.group2; i++) cards.push('red');
+            if (p.group3 >= 1) cards.push('red');
+            if (p.group3 >= 2) cards.push('black');
+            if (p.group4 >= 1) cards.push('black');
+
+            el.innerHTML = cards.map(c => `
+                <div style="
+                    width:40px; height:56px; background:${cardColors[c]}; color:${cardText[c]};
+                    border-radius:5px; border:1px solid rgba(255,255,255,0.2);
+                "></div>
+            `).join('');
+        }
+
+        if (broadcastChannel) {
+            // Demande l'état initial
+            broadcastChannel.postMessage({ type: 'request_state' });
+            broadcastChannel.onmessage = (event) => {
+                const d = event.data;
+                if (d.type !== 'state') return;
+                document.getElementById('tv-left').textContent   = d.left;
+                document.getElementById('tv-right').textContent  = d.right;
+                document.getElementById('tv-chrono').textContent = d.time;
+                document.getElementById('tv-status').textContent = d.running ? '▶ EN COURS' : '⏸ PAUSE';
+                renderCards('tv-cards-left',  d.penalties.left);
+                renderCards('tv-cards-right', d.penalties.right);
+            };
         } else {
-            alert("Format de temps invalide. Veuillez utiliser le format MM:SS (ex: 03:00).");
+            document.getElementById('tv-status').textContent = 'BroadcastChannel non supporté — utilisez le même navigateur';
         }
+        return; // Pas besoin d'initialiser le reste en mode TV
     }
 
-
-
-/**
- * Gère le déclenchement et le fonctionnement de la pause médicale.
- * Utilise une modale (overlay) au lieu d'une nouvelle fenêtre.
- */
-/**
- * Gère le déclenchement et le fonctionnement de la pause médicale.
- * Utilise une modale (overlay) au lieu d'une nouvelle fenêtre.
- */
-function startMedicalBreak() {
-    if (isMedicalBreak) {
-        return; // Empêche de déclencher plusieurs pauses simultanément
+    // Répondre aux demandes d'état depuis la TV
+    if (broadcastChannel) {
+        broadcastChannel.onmessage = (event) => {
+            if (event.data.type === 'request_state') broadcastState();
+        };
     }
 
-    if (isTimerRunning) {
-        clearInterval(timerId);
-        startStopButton.textContent = 'PAUSE';
-        startStopButton.style.backgroundColor = 'red';
-    }
-    isMedicalBreak = true;
-    
-    // Afficher la modale
-    medicalOverlay.classList.remove('hidden');
-    
-    // Réinitialise le temps de pause à 5 minutes (300 secondes)
-    let popupTime = 300; 
-    
-    // Met à jour l'affichage initial du chrono dans la modale
-    medicalChronoDisplay.textContent = formatTime(popupTime);
-
-    // Lance le décompte du chrono médical
-    medicalTimerId = setInterval(() => {
-        popupTime--;
-        medicalChronoDisplay.textContent = formatTime(popupTime);
-        
-        if (popupTime <= 0) {
-            endMedicalBreak();
-        }
-    }, 1000);
-}
-
-/**
- * Met fin à la pause médicale, masque la modale et relance le match.
- */
-function endMedicalBreak() {
-    clearInterval(medicalTimerId);
-    medicalOverlay.classList.add('hidden');
-    isMedicalBreak = false;
-    alert("Fin de la pause médicale ! Le match va reprendre.");
-    if (!isTimerRunning) {
-        startStopTimer();
-    }
-}
-
-/**
- * Met fin à la pause médicale, masque la modale et relance le match.
- */
-function endMedicalBreak() {
-    clearInterval(medicalTimerId);
-    medicalOverlay.classList.add('hidden');
-    isMedicalBreak = false;
-    alert("Fin de la pause médicale ! Le match va reprendre.");
-    if (!isTimerRunning) {
-        startStopTimer();
-    }
-}
-
-
-
-
-
-    // Bloc des raccourcis clavier
-document.addEventListener('keydown', (event) => {
-    // Empêche la barre d'espace de scroller ou d'avoir une action par défaut
-    if (event.key === ' ') {
-        event.preventDefault(); 
-    }
-    
-    // Simplification de la touche pressée
-    const key = event.key.toLowerCase();
-    
-    /// Bloc des raccourcis clavier
-document.addEventListener('keydown', (event) => {
-    
-    // NOUVEAU : IGNORER LA RÉPÉTITION DES TOUCHES (FRONT MONTANT)
-    if (event.repeat) {
-        return; 
-    }
-
-    const key = event.key.toLowerCase();
-    
-    // Bloque les actions par défaut pour les touches utilisées pour le jeu
-    const blockedKeys = [' ', 'q', 'w', 'e', 'a', 'z', 'b', 'j', 'r', 'n']; 
-    if (blockedKeys.includes(key) || event.ctrlKey || event.altKey) {
-        event.preventDefault(); 
-    }
-    
-    const code = event.code; 
-    
-    // Joueur de gauche (Left): Pas de modificateur (Shift, Ctrl, Alt)
-    const playerLeft = !event.shiftKey && !event.ctrlKey && !event.altKey;
-    // Joueur de droite (Right): Modificateur Shift
-    const playerRight = event.shiftKey && !event.ctrlKey && !event.altKey;
-
-
-    // =======================================================
-    // 1. GESTION DES POINTS (Basé sur la position des touches)
-    // =======================================================
-    if (playerLeft || playerRight) {
-        let points = 0;
-        let validKey = false;
-        
-        // Détermine la valeur du point
-        switch (code) {
-            case 'KeyA': // Touche 'A' (AZERTY) ou 'Q' (QWERTY)
-            case 'KeyQ': 
-                points = 1;
-                validKey = true;
-                break;
-            
-            case 'KeyZ': // Touche 'Z' (AZERTY) ou 'W' (QWERTY)
-            case 'KeyW': 
-                points = 3;
-                validKey = true;
-                break;
-
-            case 'KeyE': // Touche 'E' (identique dans les deux cas)
-                points = 5;
-                validKey = true;
-                break;
-        }
-
-        // Si la touche pressée est un raccourci de point
-        if (validKey) {
-            if (playerLeft) {
-                updateScore('left', points);
-            } else if (playerRight) {
-                updateScore('right', points);
-            }
-        }
-    }
-    
-    // ======================================================
-    // 2. GESTION DES CARTONS (Basé sur la valeur de la touche : key)
-    //    Left: B, J, R, N | Right: Alt+B, Alt+J, Alt+R, Alt+N
-    //    Ici, 'key' (la valeur affichée sur la touche) est utilisé pour les sanctions.
-    // ======================================================
-    const applyPenalty = (player, group) => {
-        const sanction = determineCardAndPoints(player, group);
-        if (sanction.endsMatch) {
-            handleElimination(player); 
-        }
-    };
-    
-    // Gère les fautes
-    if (key === 'b' || key === 'j' || key === 'r' || key === 'n') {
-        // Joueur Droit (Alt + Touche)
-        if (event.altKey) {
-            switch (key) {
-                case 'b': applyPenalty('right', 1); break;
-                case 'j': applyPenalty('right', 2); break;
-                case 'r': applyPenalty('right', 3); break;
-                case 'n': applyPenalty('right', 4); break;
-            }
-        } 
-        // Joueur Gauche (Touche simple, sans Alt)
-        else if (!event.ctrlKey) { 
-            switch (key) {
-                case 'b': applyPenalty('left', 1); break;
-                case 'j': applyPenalty('left', 2); break;
-                case 'r': applyPenalty('left', 3); break;
-                case 'n': applyPenalty('left', 4); break;
-            }
-        }
-    }
-
-    // =======================================================
-    // 3. COMMANDES GLOBALES
-    // =======================================================
-    switch (key) {
-        case ' ':
-            startStopTimer();
-            break;
-        
-        // Réinitialisation (F5)
-        case 'f5':
-            // event.preventDefault() est appelé plus haut via le check global
-            resetMatch();
-            break; 
-        
-        // Annulation (Ctrl+Z)
-        case 'z': 
-            if (event.ctrlKey) {
-                undoLastAction();
-            }
-            break;
-    }
+    // Initialisation affichage
+    updateCardDisplay();
+    broadcastState();
 });
-});
-
-}); 
