@@ -7,33 +7,394 @@ document.addEventListener('DOMContentLoaded', () => {
     let isMedicalBreak = false;
     let currentMatchScoreLeft = 0;
     let currentMatchScoreRight = 0;
-
     let medicalTimerId;
-    let medicalTimeInSeconds = 300;
 
-    const medicalOverlay = document.getElementById('medicalOverlay');
-    const medicalChronoDisplay = document.getElementById('medicalChrono');
-    const closeMedicalBtn = document.getElementById('closeMedicalBtn');
-
-    // Historique des actions pour l'annulation (état complet)
     const scoreHistory = [];
     const MAX_HISTORY_SIZE = 30;
 
-    // Historique des sanctions
     const penalties = {
         left:  { group1: 0, group2: 0, group3: 0, group4: 0 },
         right: { group1: 0, group2: 0, group3: 0, group4: 0 }
     };
 
-    // BroadcastChannel pour le cast TV (même origine uniquement)
-    let broadcastChannel = null;
-    try {
-        broadcastChannel = new BroadcastChannel('asl_scoreboard');
-    } catch(e) {
-        console.warn('BroadcastChannel non supporté:', e);
+    // ========= PEER.JS — CAST TV =========
+    let peer = null;
+    let tvConnection = null;   // côté tablette : connexion vers la TV
+    let sessionCode = null;    // code 4 chiffres généré par la tablette
+    let peerRole = 'controller'; // 'controller' ou 'tv'
+
+    // Génère un code de session lisible (4 chiffres)
+    function generateSessionCode() {
+        return 'ASL-' + Math.floor(1000 + Math.random() * 9000);
     }
 
-    // ========= SÉLECTION DES ÉLÉMENTS DU DOM =========
+    function initPeerAsController() {
+        sessionCode = generateSessionCode();
+        peer = new Peer(sessionCode, { debug: 0 });
+
+        peer.on('open', (id) => {
+            console.log('Contrôleur PeerJS prêt, code:', id);
+            updateCastStatus('waiting', sessionCode);
+        });
+
+        peer.on('connection', (conn) => {
+            tvConnection = conn;
+            conn.on('open', () => {
+                updateCastStatus('connected', sessionCode);
+                broadcastState(); // envoie l'état immédiatement
+            });
+            conn.on('close', () => {
+                tvConnection = null;
+                updateCastStatus('waiting', sessionCode);
+            });
+            conn.on('error', (e) => console.warn('conn error:', e));
+        });
+
+        peer.on('error', (e) => {
+            console.warn('PeerJS error:', e);
+            updateCastStatus('error', '');
+        });
+    }
+
+    function initPeerAsTV(code) {
+        peerRole = 'tv';
+        peer = new Peer({ debug: 0 });
+
+        peer.on('open', () => {
+            const conn = peer.connect(code, { reliable: true });
+            conn.on('open', () => {
+                console.log('TV connectée au contrôleur:', code);
+                showTVMode();
+                updateTVStatus('connected');
+            });
+            conn.on('data', (data) => {
+                if (data.type === 'state') renderTVState(data);
+            });
+            conn.on('close', () => updateTVStatus('disconnected'));
+            conn.on('error', (e) => updateTVStatus('error'));
+        });
+
+        peer.on('error', (e) => {
+            console.warn('TV PeerJS error:', e);
+            updateTVStatus('error: code invalide ?');
+        });
+    }
+
+    function broadcastState() {
+        if (!tvConnection || !tvConnection.open) return;
+        try {
+            tvConnection.send({
+                type: 'state',
+                left:      currentMatchScoreLeft,
+                right:     currentMatchScoreRight,
+                time:      formatTime(matchTimeInSeconds),
+                running:   isTimerRunning,
+                medical:   isMedicalBreak,
+                penalties: JSON.parse(JSON.stringify(penalties))
+            });
+        } catch(e) { console.warn('broadcast error:', e); }
+    }
+
+    // Met à jour le petit indicateur de cast dans l'UI contrôleur
+    function updateCastStatus(status, code) {
+        const el = document.getElementById('castStatus');
+        if (!el) return;
+        const map = {
+            idle:      { text: '📺 CAST TV',          color: '#555' },
+            waiting:   { text: `⏳ Code : ${code}`,    color: '#e4a300' },
+            connected: { text: `✅ TV : ${code}`,      color: '#0cc346' },
+            error:     { text: '❌ Erreur PeerJS',     color: '#ff004c' },
+        };
+        const s = map[status] || map.idle;
+        el.textContent = s.text;
+        el.style.background = s.color;
+        el.style.color = (status === 'waiting') ? '#111' : '#fff';
+    }
+
+    // ========= MODE TV =========
+    function showTVMode() {
+        // Remplace tout le body par l'interface TV
+        document.body.innerHTML = `
+        <style>
+            * { margin:0; padding:0; box-sizing:border-box; }
+            body {
+                background: #0a0d12;
+                font-family: 'Courier New', monospace;
+                height: 100vh;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+            #tv-status-bar {
+                background: #111;
+                padding: 6px 20px;
+                font-size: 13px;
+                color: #444;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            #tv-main {
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0;
+            }
+            .tv-side {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+                padding: 20px;
+                position: relative;
+            }
+            .tv-side-left  { border-right: 2px solid #1a1a2e; }
+            .tv-side-right { border-left:  2px solid #1a1a2e; }
+            .tv-label {
+                font-size: 2vw;
+                letter-spacing: 6px;
+                font-weight: bold;
+                margin-bottom: 10px;
+                text-transform: uppercase;
+            }
+            .tv-score {
+                font-size: 28vw;
+                font-weight: 900;
+                line-height: 0.85;
+                font-variant-numeric: tabular-nums;
+            }
+            .tv-left-color  { color: #ff004c; text-shadow: 0 0 40px rgba(255,0,76,0.5); }
+            .tv-right-color { color: #0cc346; text-shadow: 0 0 40px rgba(12,195,70,0.5); }
+            .tv-cards {
+                display: flex;
+                gap: 8px;
+                margin-top: 20px;
+                min-height: 50px;
+                align-items: center;
+            }
+            .tv-card {
+                width: 32px;
+                height: 46px;
+                border-radius: 5px;
+                border: 1px solid rgba(255,255,255,0.15);
+                box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            }
+            .tv-card-white  { background: #f0f6fc; }
+            .tv-card-yellow { background: #e4c700; }
+            .tv-card-red    { background: #ff004c; }
+            .tv-card-black  { background: #111; border-color: #555; }
+            #tv-center {
+                width: 180px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 12px;
+                flex-shrink: 0;
+            }
+            #tv-chrono {
+                font-size: 5vw;
+                font-weight: bold;
+                color: #c9d1d9;
+                letter-spacing: 4px;
+                padding: 10px 20px;
+                border: 2px solid #222;
+                border-radius: 10px;
+                background: #111;
+                min-width: 160px;
+                text-align: center;
+            }
+            #tv-chrono.running { border-color: #0cc346; color: #0cc346; }
+            #tv-chrono.medical { border-color: #ff004c; color: #ff004c; animation: blink 1s infinite; }
+            #tv-timer-label {
+                font-size: 12px;
+                color: #444;
+                letter-spacing: 2px;
+            }
+            #tv-vs {
+                font-size: 1.5vw;
+                color: #333;
+                letter-spacing: 4px;
+            }
+            #tv-conn-status {
+                font-size: 12px;
+                padding: 4px 10px;
+                border-radius: 20px;
+                background: #111;
+            }
+            @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+        </style>
+        <div id="tv-status-bar">
+            <span>ASL-FFE — Répéteur Escrime</span>
+            <span id="tv-conn-status" style="color:#e4a300">⏳ Connexion...</span>
+            <span id="tv-clock"></span>
+        </div>
+        <div id="tv-main">
+            <div class="tv-side tv-side-left">
+                <div class="tv-label tv-left-color">● Rouge</div>
+                <div class="tv-score tv-left-color" id="tv-left">0</div>
+                <div class="tv-cards" id="tv-cards-left"></div>
+            </div>
+            <div id="tv-center">
+                <div id="tv-timer-label">TEMPS</div>
+                <div id="tv-chrono">03:00</div>
+                <div id="tv-vs">VS</div>
+            </div>
+            <div class="tv-side tv-side-right">
+                <div class="tv-label tv-right-color">● Vert</div>
+                <div class="tv-score tv-right-color" id="tv-right">0</div>
+                <div class="tv-cards" id="tv-cards-right"></div>
+            </div>
+        </div>
+        `;
+        // Horloge temps réel
+        setInterval(() => {
+            const el = document.getElementById('tv-clock');
+            if (el) el.textContent = new Date().toLocaleTimeString('fr-FR');
+        }, 1000);
+    }
+
+    function updateTVStatus(status) {
+        const el = document.getElementById('tv-conn-status');
+        if (!el) return;
+        const map = {
+            connected:    { text: '✅ Connecté',       color: '#0cc346' },
+            disconnected: { text: '❌ Déconnecté',     color: '#ff004c' },
+            error:        { text: '⚠️ Erreur',         color: '#ff004c' },
+        };
+        const s = map[status];
+        if (s) { el.textContent = s.text; el.style.color = s.color; }
+    }
+
+    function renderTVState(data) {
+        const setEl = (id, val) => { const e = document.getElementById(id); if(e) e.textContent = val; };
+        setEl('tv-left',   data.left);
+        setEl('tv-right',  data.right);
+        setEl('tv-chrono', data.time);
+
+        const chrono = document.getElementById('tv-chrono');
+        if (chrono) {
+            chrono.className = data.medical ? 'medical' : (data.running ? 'running' : '');
+        }
+
+        renderTVCards('tv-cards-left',  data.penalties.left);
+        renderTVCards('tv-cards-right', data.penalties.right);
+    }
+
+    function renderTVCards(containerId, p) {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        const cards = [];
+        if (p.group1 >= 1) cards.push('white');
+        for (let i = 1; i < p.group1; i++) cards.push('yellow');
+        if (p.group2 >= 1) cards.push('yellow');
+        for (let i = 1; i < p.group2; i++) cards.push('red');
+        if (p.group3 >= 1) cards.push('red');
+        if (p.group3 >= 2) cards.push('black');
+        if (p.group4 >= 1) cards.push('black');
+        el.innerHTML = cards.map(c => `<div class="tv-card tv-card-${c}"></div>`).join('');
+    }
+
+    // ========= UI MODALE CAST =========
+    function showCastModal() {
+        let modal = document.getElementById('castModal');
+        if (modal) { modal.style.display = 'flex'; return; }
+
+        modal = document.createElement('div');
+        modal.id = 'castModal';
+        modal.style.cssText = `
+            position:fixed; top:0; left:0; width:100%; height:100%;
+            background:rgba(0,0,0,0.88); display:flex;
+            justify-content:center; align-items:center; z-index:3000;
+        `;
+        modal.innerHTML = `
+        <div style="
+            background:#161b22; border:2px solid #30363d; border-radius:16px;
+            padding:2em; max-width:420px; width:90%; color:#c9d1d9; text-align:center;
+        ">
+            <h2 style="margin:0 0 1em; color:#c9d1d9;">📺 CAST TV via PeerJS</h2>
+
+            <div id="cast-section-controller" style="margin-bottom:1.5em;">
+                <p style="color:#8b949e; font-size:14px; margin-bottom:12px;">
+                    Génère un code sur cette tablette, puis entre-le sur la TV.
+                </p>
+                <button id="castStartBtn" style="
+                    background:#007bff; color:#fff; border:none; border-radius:8px;
+                    padding:12px 24px; font-size:16px; font-weight:bold; cursor:pointer; width:100%;
+                ">📡 Activer le mode CONTRÔLEUR</button>
+                <div id="castCodeDisplay" style="
+                    margin-top:12px; font-size:2em; font-weight:bold;
+                    letter-spacing:8px; color:#e4c700; display:none;
+                    padding:10px; background:#0d1117; border-radius:8px;
+                "></div>
+                <div id="castCodeHint" style="color:#555; font-size:12px; margin-top:6px; display:none;">
+                    Entre ce code sur l'écran TV
+                </div>
+            </div>
+
+            <hr style="border-color:#30363d; margin:1em 0;">
+
+            <div id="cast-section-tv">
+                <p style="color:#8b949e; font-size:14px; margin-bottom:12px;">
+                    Sur la TV, entre le code affiché sur la tablette.
+                </p>
+                <div style="display:flex; gap:8px;">
+                    <input id="castCodeInput" type="text" placeholder="ASL-XXXX"
+                        style="
+                            flex:1; background:#0d1117; border:2px solid #30363d;
+                            border-radius:8px; padding:10px; color:#c9d1d9;
+                            font-size:18px; letter-spacing:4px; text-align:center;
+                            font-weight:bold; text-transform:uppercase;
+                        ">
+                    <button id="castConnectBtn" style="
+                        background:#0cc346; color:#0d1117; border:none; border-radius:8px;
+                        padding:10px 16px; font-size:14px; font-weight:bold; cursor:pointer;
+                    ">TV →</button>
+                </div>
+            </div>
+
+            <button id="castCloseBtn" style="
+                margin-top:1.5em; background:transparent; border:1px solid #30363d;
+                color:#8b949e; border-radius:8px; padding:8px 20px; cursor:pointer;
+            ">Fermer</button>
+        </div>
+        `;
+        document.body.appendChild(modal);
+
+        document.getElementById('castStartBtn').addEventListener('click', () => {
+            if (peer) { peer.destroy(); peer = null; }
+            initPeerAsController();
+            document.getElementById('castCodeDisplay').style.display = 'block';
+            document.getElementById('castCodeHint').style.display = 'block';
+            document.getElementById('castCodeDisplay').textContent = '...';
+
+            // Attend que PeerJS confirme l'ID
+            const wait = setInterval(() => {
+                if (sessionCode) {
+                    clearInterval(wait);
+                    document.getElementById('castCodeDisplay').textContent = sessionCode;
+                }
+            }, 300);
+        });
+
+        document.getElementById('castConnectBtn').addEventListener('click', () => {
+            const code = document.getElementById('castCodeInput').value.trim().toUpperCase();
+            if (!code.startsWith('ASL-') || code.length < 8) {
+                alert('Code invalide. Format attendu : ASL-XXXX');
+                return;
+            }
+            document.getElementById('castModal').style.display = 'none';
+            initPeerAsTV(code);
+        });
+
+        document.getElementById('castCloseBtn').addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+    }
+
+    // ========= DOM =========
     const matchChronoDisplay = document.getElementById('matchChrono');
     const customTimeBtn      = document.getElementById('customTimeBtn');
     const quickTimer30s      = document.getElementById('quickTimer30s');
@@ -42,30 +403,73 @@ document.addEventListener('DOMContentLoaded', () => {
     const leftScoreDisplay   = document.getElementById('left_score');
     const rightScoreDisplay  = document.getElementById('right_score');
     const chronoControls     = document.getElementById('chronoControls');
-    const medicalBreakBtn    = document.getElementById('medicalBreakBtn');
+    const medicalOverlay     = document.getElementById('medicalOverlay');
+    const medicalChronoDisplay = document.getElementById('medicalChrono');
+    const closeMedicalBtn    = document.getElementById('closeMedicalBtn');
     const undoBtn            = document.getElementById('undoBtn');
     const faultButtons       = document.querySelectorAll('.fault-btn');
     const pointButtons       = document.querySelectorAll('.point-btn');
     const castBtn            = document.getElementById('castBtn');
 
-    // ========= BROADCAST (CAST TV) =========
-    function broadcastState() {
-        if (!broadcastChannel) return;
-        broadcastChannel.postMessage({
-            type: 'state',
-            left:  currentMatchScoreLeft,
-            right: currentMatchScoreRight,
-            time:  formatTime(matchTimeInSeconds),
-            running: isTimerRunning,
+    // ========= UTILITAIRES =========
+    function formatTime(s) {
+        const m = Math.floor(s / 60);
+        const sec = s % 60;
+        return `${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
+    }
+
+    function saveStateToHistory() {
+        if (scoreHistory.length >= MAX_HISTORY_SIZE) scoreHistory.shift();
+        scoreHistory.push({
+            left:      currentMatchScoreLeft,
+            right:     currentMatchScoreRight,
             penalties: JSON.parse(JSON.stringify(penalties))
         });
     }
 
-    // ========= FONCTIONS DE BASE =========
-    function formatTime(totalSeconds) {
-        const m = Math.floor(totalSeconds / 60);
-        const s = totalSeconds % 60;
-        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    function updateCardDisplay() {
+        ['left', 'right'].forEach(player => {
+            const p = penalties[player];
+            let white = 0, yellow = 0, red = 0, black = 0;
+            if (p.group1 >= 1) white = 1;
+            if (p.group1 >= 2) yellow += p.group1 - 1;
+            if (p.group2 >= 1) yellow += 1;
+            if (p.group2 >= 2) red    += p.group2 - 1;
+            if (p.group3 >= 1) red    += 1;
+            if (p.group3 >= 2) black  += 1;
+            if (p.group4 >= 1) black  += 1;
+
+            [['white',white],['yellow',yellow],['red',red],['black',black]].forEach(([c,n]) => {
+                const el = document.getElementById(`${player}_card_${c}`);
+                if (!el) return;
+                el.textContent = n;
+                el.style.opacity = n > 0 ? '1' : '0.2';
+            });
+        });
+    }
+
+    // Applique un score SANS sauvegarder (la sauvegarde est faite en amont)
+    function applyScore(player, points) {
+        if (player === 'left') {
+            currentMatchScoreLeft = Math.max(0, currentMatchScoreLeft + points);
+            leftScoreDisplay.textContent = currentMatchScoreLeft;
+        } else {
+            currentMatchScoreRight = Math.max(0, currentMatchScoreRight + points);
+            rightScoreDisplay.textContent = currentMatchScoreRight;
+        }
+    }
+
+    function undoLastAction() {
+        if (scoreHistory.length === 0) return;
+        const prev = scoreHistory.pop();
+        currentMatchScoreLeft  = prev.left;
+        currentMatchScoreRight = prev.right;
+        penalties.left  = { ...prev.penalties.left };
+        penalties.right = { ...prev.penalties.right };
+        leftScoreDisplay.textContent  = currentMatchScoreLeft;
+        rightScoreDisplay.textContent = currentMatchScoreRight;
+        updateCardDisplay();
+        broadcastState();
     }
 
     function setMatchTime(seconds) {
@@ -78,88 +482,6 @@ document.addEventListener('DOMContentLoaded', () => {
         broadcastState();
     }
 
-    /**
-     * Sauvegarde l'état COMPLET dans l'historique.
-     * À appeler UNE SEULE FOIS par action utilisateur.
-     */
-    function saveStateToHistory() {
-        if (scoreHistory.length >= MAX_HISTORY_SIZE) {
-            scoreHistory.shift();
-        }
-        scoreHistory.push({
-            left:      currentMatchScoreLeft,
-            right:     currentMatchScoreRight,
-            penalties: JSON.parse(JSON.stringify(penalties))
-        });
-    }
-
-    function updateCardDisplay() {
-        ['left', 'right'].forEach(player => {
-            const p = penalties[player];
-            let countWhite  = 0;
-            let countYellow = 0;
-            let countRed    = 0;
-            let countBlack  = 0;
-
-            if (p.group1 >= 1) countWhite = 1;
-            if (p.group1 >= 2) countYellow += p.group1 - 1;
-
-            if (p.group2 >= 1) countYellow += 1;
-            if (p.group2 >= 2) countRed    += p.group2 - 1;
-
-            if (p.group3 >= 1) countRed    += 1;
-            if (p.group3 >= 2) countBlack  += 1;
-
-            if (p.group4 >= 1) countBlack  += 1;
-
-            const cards = { white: countWhite, yellow: countYellow, red: countRed, black: countBlack };
-
-            for (const cardType in cards) {
-                const el = document.getElementById(`${player}_card_${cardType}`);
-                if (!el) continue;
-                const count = cards[cardType];
-                el.textContent = count;
-                el.style.opacity = count > 0 ? '1' : '0.2';
-            }
-        });
-    }
-
-    /**
-     * Met à jour le score SANS sauvegarder dans l'historique.
-     * La sauvegarde est faite en amont par l'appelant.
-     */
-    function applyScore(player, points) {
-        if (player === 'left') {
-            currentMatchScoreLeft = Math.max(0, currentMatchScoreLeft + points);
-            leftScoreDisplay.textContent = currentMatchScoreLeft;
-        } else if (player === 'right') {
-            currentMatchScoreRight = Math.max(0, currentMatchScoreRight + points);
-            rightScoreDisplay.textContent = currentMatchScoreRight;
-        }
-    }
-
-    /**
-     * Annule la dernière action (UN SEUL pop = UN SEUL undo).
-     */
-    function undoLastAction() {
-        if (scoreHistory.length === 0) {
-            console.log('Historique vide.');
-            return;
-        }
-        const prev = scoreHistory.pop();
-        currentMatchScoreLeft  = prev.left;
-        currentMatchScoreRight = prev.right;
-        penalties.left  = { ...prev.penalties.left };
-        penalties.right = { ...prev.penalties.right };
-
-        leftScoreDisplay.textContent  = currentMatchScoreLeft;
-        rightScoreDisplay.textContent = currentMatchScoreRight;
-        updateCardDisplay();
-        broadcastState();
-        console.log('Dernière action annulée.');
-    }
-
-    // ========= CHRONOMÈTRE =========
     function startStopTimer() {
         if (isTimerRunning) {
             clearInterval(timerId);
@@ -168,7 +490,7 @@ document.addEventListener('DOMContentLoaded', () => {
             isTimerRunning = false;
             resetBtn.style.display = 'block';
         } else {
-            if (matchTimeInSeconds <= 0) return; // ne pas relancer si terminé
+            if (matchTimeInSeconds <= 0) return;
             timerId = setInterval(updateTimer, 1000);
             startStopButton.textContent = 'PAUSE';
             startStopButton.style.backgroundColor = 'red';
@@ -186,6 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             clearInterval(timerId);
             isTimerRunning = false;
+            matchChronoDisplay.textContent = '00:00';
             startStopButton.textContent = 'FIN DU MATCH';
             startStopButton.style.backgroundColor = 'gray';
             resetBtn.style.display = 'block';
@@ -202,124 +525,74 @@ document.addEventListener('DOMContentLoaded', () => {
         currentMatchScoreLeft  = 0;
         currentMatchScoreRight = 0;
         matchTimeInSeconds = 180;
-        medicalTimeInSeconds = 300;
-
-        penalties.left  = { group1: 0, group2: 0, group3: 0, group4: 0 };
-        penalties.right = { group1: 0, group2: 0, group3: 0, group4: 0 };
+        penalties.left  = { group1:0, group2:0, group3:0, group4:0 };
+        penalties.right = { group1:0, group2:0, group3:0, group4:0 };
         scoreHistory.length = 0;
-
         leftScoreDisplay.textContent  = '0';
         rightScoreDisplay.textContent = '0';
         matchChronoDisplay.textContent = '03:00';
         startStopButton.textContent = 'START';
         startStopButton.style.backgroundColor = 'green';
         resetBtn.style.display = 'none';
-
         medicalOverlay.classList.add('hidden');
         updateCardDisplay();
         broadcastState();
     }
 
-    // ========= LOGIQUE FAUTES =========
-    /**
-     * FIX BUG PRINCIPAL : saveStateToHistory() est appelé UNE SEULE FOIS ici.
-     * applyScore() ne sauvegarde plus dans l'historique.
-     */
+    // FIX BUG : saveStateToHistory UNE SEULE FOIS, applyScore ne sauvegarde plus
     function determineCardAndPoints(player, group) {
-        // Sauvegarde unique AVANT toute modification
         saveStateToHistory();
 
-        let card = '';
-        let points = 0;
-        let endsMatch = false;
+        let card = '', points = 0, endsMatch = false;
         const opponent = player === 'left' ? 'right' : 'left';
 
-        if (group !== 4) {
-            penalties[player]['group' + group]++;
-        }
-        const faultLevel = penalties[player]['group' + group];
+        if (group !== 4) penalties[player]['group' + group]++;
+        else             penalties[player]['group4']++;
 
-        switch (group) {
-            case 1:
-                if (faultLevel === 1) { card = 'white'; points = 0; }
-                else                  { card = 'yellow'; points = 3; }
-                break;
-            case 2:
-                if (faultLevel === 1) { card = 'yellow'; points = 3; }
-                else                  { card = 'red'; points = 5; }
-                break;
+        const lvl = penalties[player]['group' + group];
+
+        switch(group) {
+            case 1: card = lvl===1 ? 'white':'yellow';  points = lvl===1 ? 0:3; break;
+            case 2: card = lvl===1 ? 'yellow':'red';    points = lvl===1 ? 3:5; break;
             case 3:
-                if (faultLevel === 1) { card = 'red'; points = 5; }
-                else                  { card = 'black'; endsMatch = true; }
+                if (lvl===1) { card='red';   points=5; }
+                else         { card='black'; endsMatch=true; }
                 break;
-            case 4:
-                penalties[player]['group4']++; // groupe 4 s'incrémente quand même
-                card = 'black';
-                endsMatch = true;
-                break;
-            default:
-                console.error('Groupe invalide:', group);
-                return { card: '', points: 0, endsMatch: false };
+            case 4: card='black'; endsMatch=true; break;
+            default: return {card:'',points:0,endsMatch:false};
         }
-
-        if (points > 0) {
-            applyScore(opponent, points);
-        }
-
+        if (points > 0) applyScore(opponent, points);
         updateCardDisplay();
         broadcastState();
-        return { card, points, endsMatch };
+        return {card, points, endsMatch};
     }
 
     function handleElimination(player) {
-        if (isTimerRunning) {
-            clearInterval(timerId);
-            isTimerRunning = false;
-        }
+        if (isTimerRunning) { clearInterval(timerId); isTimerRunning = false; }
         startStopButton.textContent = 'MATCH TERMINÉ';
         startStopButton.style.backgroundColor = 'gray';
         resetBtn.style.display = 'block';
-
-        const winner    = player === 'left' ? 'Combattant Vert (droite)' : 'Combattant Rouge (gauche)';
-        const eliminated = player === 'left' ? 'Combattant Rouge (gauche)' : 'Combattant Vert (droite)';
-
-        showNotification(`⬛ CARTON NOIR — ${eliminated} éliminé(e)\n🏆 Victoire de ${winner}`, 'black');
+        const winner = player==='left' ? 'Combattant Vert' : 'Combattant Rouge';
+        const loser  = player==='left' ? 'Combattant Rouge' : 'Combattant Vert';
+        showNotification(`⬛ CARTON NOIR\n${loser} éliminé(e)\n🏆 Victoire de ${winner}`, 'black');
+        broadcastState();
     }
 
-    // ========= NOTIFICATION (remplace alert) =========
     function showNotification(message, color) {
-        let overlay = document.getElementById('notifOverlay');
-        if (!overlay) {
-            overlay = document.createElement('div');
-            overlay.id = 'notifOverlay';
-            overlay.style.cssText = `
-                position:fixed; top:0; left:0; width:100%; height:100%;
-                background:rgba(0,0,0,0.85); display:flex;
-                justify-content:center; align-items:center; z-index:2000;
-                cursor:pointer;
-            `;
-            overlay.addEventListener('click', () => overlay.remove());
-            document.body.appendChild(overlay);
+        let el = document.getElementById('notifOverlay');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'notifOverlay';
+            el.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);display:flex;justify-content:center;align-items:center;z-index:2000;cursor:pointer;';
+            el.addEventListener('click', () => el.remove());
+            document.body.appendChild(el);
         }
-        const colorMap = { black: '#111', red: '#ff004c', yellow: '#e4c700', white: '#f0f6fc' };
-        const textColor = (color === 'white' || color === 'yellow') ? '#111' : '#fff';
-        overlay.innerHTML = `
-            <div style="
-                background:${colorMap[color] || '#222'};
-                color:${textColor};
-                padding:2em 3em; border-radius:15px; text-align:center;
-                font-size:1.5em; font-weight:bold; max-width:80%;
-                border: 3px solid rgba(255,255,255,0.3);
-                white-space: pre-line;
-            ">
-                ${message}
-                <div style="margin-top:1em; font-size:0.6em; opacity:0.7;">Appuyez pour fermer</div>
-            </div>
-        `;
-        overlay.style.display = 'flex';
+        const bg = {black:'#111',red:'#ff004c',yellow:'#e4c700',white:'#f0f6fc'}[color]||'#222';
+        const fg = (color==='white'||color==='yellow') ? '#111':'#fff';
+        el.innerHTML = `<div style="background:${bg};color:${fg};padding:2em 3em;border-radius:15px;text-align:center;font-size:1.5em;font-weight:bold;max-width:80%;border:3px solid rgba(255,255,255,0.2);white-space:pre-line;">${message}<div style="margin-top:1em;font-size:0.6em;opacity:0.7;">Appuyez pour fermer</div></div>`;
+        el.style.display='flex';
     }
 
-    // ========= PAUSE MÉDICALE =========
     function startMedicalBreak() {
         if (isMedicalBreak) return;
         if (isTimerRunning) {
@@ -330,15 +603,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         isMedicalBreak = true;
         medicalOverlay.classList.remove('hidden');
-
-        let popupTime = 300;
-        medicalChronoDisplay.textContent = formatTime(popupTime);
-
+        let t = 300;
+        medicalChronoDisplay.textContent = formatTime(t);
         medicalTimerId = setInterval(() => {
-            popupTime--;
-            medicalChronoDisplay.textContent = formatTime(popupTime);
-            if (popupTime <= 0) endMedicalBreak();
+            t--;
+            medicalChronoDisplay.textContent = formatTime(t);
+            broadcastState();
+            if (t <= 0) endMedicalBreak();
         }, 1000);
+        broadcastState();
     }
 
     function endMedicalBreak() {
@@ -350,31 +623,18 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('notifOverlay')?.remove();
             if (!isTimerRunning) startStopTimer();
         }, 2000);
+        broadcastState();
     }
 
-    // ========= TEMPS PERSONNALISÉ =========
     function promptForCustomTime() {
-        const userInput = prompt('Entrez la durée du match (format MM:SS, ex: 05:00) :');
-        if (!userInput) return;
-        const match = userInput.match(/^(\d{1,2}):(\d{2})$/);
-        if (match) {
-            const m = parseInt(match[1], 10);
-            const s = parseInt(match[2], 10);
-            if (s >= 60) { alert('Les secondes doivent être < 60.'); return; }
-            setMatchTime(m * 60 + s);
-        } else {
-            alert('Format invalide. Utilisez MM:SS (ex: 03:00).');
-        }
+        const input = prompt('Durée du match (MM:SS) :');
+        if (!input) return;
+        const m = input.match(/^(\d{1,2}):(\d{2})$/);
+        if (!m || parseInt(m[2])>=60) { alert('Format invalide (ex: 03:00)'); return; }
+        setMatchTime(parseInt(m[1])*60 + parseInt(m[2]));
     }
 
-    // ========= CAST TV =========
-    function openScoreboard() {
-        const url = new URL(window.location.href);
-        url.searchParams.set('mode', 'tv');
-        window.open(url.toString(), '_blank', 'noopener');
-    }
-
-    // ========= ÉCOUTEURS D'ÉVÉNEMENTS =========
+    // ========= ÉCOUTEURS =========
     startStopButton.addEventListener('click', startStopTimer);
     resetBtn.addEventListener('click', resetMatch);
     undoBtn.addEventListener('click', undoLastAction);
@@ -382,147 +642,56 @@ document.addEventListener('DOMContentLoaded', () => {
     closeMedicalBtn.addEventListener('click', endMedicalBreak);
     quickTimer30s.addEventListener('click', () => setMatchTime(30));
     customTimeBtn.addEventListener('click', promptForCustomTime);
-    if (castBtn) castBtn.addEventListener('click', openScoreboard);
+    if (castBtn) castBtn.addEventListener('click', showCastModal);
+
+    document.getElementById('medicalBreakBtn')?.addEventListener('click', startMedicalBreak);
 
     matchChronoDisplay.addEventListener('click', () => {
         chronoControls.classList.toggle('force-hide');
     });
 
-    pointButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            saveStateToHistory();
-            applyScore(btn.dataset.player, parseInt(btn.dataset.points, 10));
-            broadcastState();
-        });
-    });
+    pointButtons.forEach(btn => btn.addEventListener('click', () => {
+        saveStateToHistory();
+        applyScore(btn.dataset.player, parseInt(btn.dataset.points, 10));
+        broadcastState();
+    }));
 
-    faultButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const player = btn.dataset.player;
-            const group  = parseInt(btn.dataset.group, 10);
-            const sanction = determineCardAndPoints(player, group);
-            if (sanction.endsMatch) handleElimination(player);
-            console.log(`${player} → ${sanction.card.toUpperCase()} (Grp ${group}), +${sanction.points} pts adversaire`);
-        });
-    });
+    faultButtons.forEach(btn => btn.addEventListener('click', () => {
+        const s = determineCardAndPoints(btn.dataset.player, parseInt(btn.dataset.group, 10));
+        if (s.endsMatch) handleElimination(btn.dataset.player);
+    }));
 
-    // ========= RACCOURCIS CLAVIER (UNIQUE listener) =========
-    document.addEventListener('keydown', (event) => {
-        if (event.repeat) return;
+    // ========= RACCOURCIS CLAVIER =========
+    //document.addEventListener('keydown', (e) => {
+    //    if (e.repeat) return;
+    //    const key  = e.key.toLowerCase();
+    //    const code = e.code;
+    //    const noMod    = !e.shiftKey && !e.ctrlKey && !e.altKey;
+    //    const shiftOnly = e.shiftKey && !e.ctrlKey && !e.altKey;
+    //    const altOnly   = e.altKey  && !e.shiftKey && !e.ctrlKey;
 
-        const key  = event.key.toLowerCase();
-        const code = event.code;
-
-        // Touches bloquées pour éviter scroll/actions navigateur
-        const blockedKeys = [' ', 'q', 'w', 'e', 'a', 'z', 'b', 'j', 'r', 'n'];
-        if (blockedKeys.includes(key)) event.preventDefault();
-
-        const noMod    = !event.shiftKey && !event.ctrlKey && !event.altKey;
-        const shiftOnly = event.shiftKey && !event.ctrlKey && !event.altKey;
-        const altOnly   = event.altKey && !event.shiftKey && !event.ctrlKey;
-
-        // --- Points ---
-        const pointMap = { 'KeyA': 1, 'KeyQ': 1, 'KeyZ': 3, 'KeyW': 3, 'KeyE': 5 };
-        if (code in pointMap) {
-            if (noMod)    { saveStateToHistory(); applyScore('left',  pointMap[code]); broadcastState(); return; }
-            if (shiftOnly){ saveStateToHistory(); applyScore('right', pointMap[code]); broadcastState(); return; }
+        // Points
+    //    const pm = {'KeyX':1,'KeyQ':1,'KeyZ':3,'KeyW':3,'KeyE':5};
+    //    if (code in pm) {
+    //        if (noMod)    { e.preventDefault(); saveStateToHistory(); applyScore('left',  pm[code]); broadcastState(); return; }
+    //        if (shiftOnly){ e.preventDefault(); saveStateToHistory(); applyScore('right', pm[code]); broadcastState(); return; }
+    //    }
+        // Cartons
+    //    const cm = {'b':1,'j':2,'r':3,'n':4};
+    //    if (key in cm && (noMod||altOnly) && !e.ctrlKey) {
+    //        e.preventDefault();
+    //        const player = noMod ? 'left' : 'right';
+    //        const s = determineCardAndPoints(player, cm[key]);
+    //        if (s.endsMatch) handleElimination(player);
+    //        return;
         }
+        // Globaux
+    //    if (key===' ')  { e.preventDefault(); startStopTimer(); }
+    //    if (key==='z' && e.ctrlKey) { e.preventDefault(); undoLastAction(); }
+    //    if (key==='f5') { e.preventDefault(); resetMatch(); }
+    //});
 
-        // --- Cartons ---
-        const cardMap = { 'b': 1, 'j': 2, 'r': 3, 'n': 4 };
-        if (key in cardMap && (noMod || altOnly)) {
-            const player = noMod ? 'left' : 'right';
-            const sanction = determineCardAndPoints(player, cardMap[key]);
-            if (sanction.endsMatch) handleElimination(player);
-            return;
-        }
-
-        // --- Commandes globales ---
-        if (key === ' ')  { startStopTimer(); return; }
-        if (key === 'z' && event.ctrlKey) { event.preventDefault(); undoLastAction(); return; }
-        if (key === 'f5') { event.preventDefault(); resetMatch(); return; }
-    });
-
-    // ========= MODE TV (si ouvert depuis cast) =========
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('mode') === 'tv') {
-        document.body.innerHTML = '';
-        document.body.style.cssText = 'margin:0; background:#0d1117; color:#c9d1d9; font-family:monospace; overflow:hidden;';
-        document.body.innerHTML = `
-            <div id="tv-view" style="
-                width:100vw; height:100vh; display:flex; flex-direction:column;
-                justify-content:center; align-items:center; gap:20px;
-            ">
-                <div style="display:flex; gap:60px; align-items:center;">
-                    <div style="text-align:center;">
-                        <div style="font-size:16px; color:#ff004c; letter-spacing:3px; margin-bottom:8px;">ROUGE</div>
-                        <div id="tv-left" style="font-size:18vw; font-weight:bold; color:#ff004c; line-height:1;">0</div>
-                        <div id="tv-cards-left" style="display:flex; gap:10px; justify-content:center; margin-top:10px;"></div>
-                    </div>
-                    <div style="text-align:center;">
-                        <div id="tv-chrono" style="font-size:6vw; color:#c9d1d9; font-weight:bold;">03:00</div>
-                        <div id="tv-status" style="font-size:2vw; color:#8b949e; margin-top:5px;">EN ATTENTE</div>
-                    </div>
-                    <div style="text-align:center;">
-                        <div style="font-size:16px; color:#0cc346; letter-spacing:3px; margin-bottom:8px;">VERT</div>
-                        <div id="tv-right" style="font-size:18vw; font-weight:bold; color:#0cc346; line-height:1;">0</div>
-                        <div id="tv-cards-right" style="display:flex; gap:10px; justify-content:center; margin-top:10px;"></div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        const cardColors = { white: '#f0f6fc', yellow: '#e4c700', red: '#ff004c', black: '#111' };
-        const cardText   = { white: '#111', yellow: '#111', red: '#fff', black: '#fff' };
-
-        function renderCards(containerId, penalties) {
-            const el = document.getElementById(containerId);
-            if (!el) return;
-            const p = penalties;
-            let cards = [];
-            if (p.group1 >= 1) cards.push('white');
-            for (let i = 1; i < p.group1; i++) cards.push('yellow');
-            if (p.group2 >= 1) cards.push('yellow');
-            for (let i = 1; i < p.group2; i++) cards.push('red');
-            if (p.group3 >= 1) cards.push('red');
-            if (p.group3 >= 2) cards.push('black');
-            if (p.group4 >= 1) cards.push('black');
-
-            el.innerHTML = cards.map(c => `
-                <div style="
-                    width:40px; height:56px; background:${cardColors[c]}; color:${cardText[c]};
-                    border-radius:5px; border:1px solid rgba(255,255,255,0.2);
-                "></div>
-            `).join('');
-        }
-
-        if (broadcastChannel) {
-            // Demande l'état initial
-            broadcastChannel.postMessage({ type: 'request_state' });
-            broadcastChannel.onmessage = (event) => {
-                const d = event.data;
-                if (d.type !== 'state') return;
-                document.getElementById('tv-left').textContent   = d.left;
-                document.getElementById('tv-right').textContent  = d.right;
-                document.getElementById('tv-chrono').textContent = d.time;
-                document.getElementById('tv-status').textContent = d.running ? '▶ EN COURS' : '⏸ PAUSE';
-                renderCards('tv-cards-left',  d.penalties.left);
-                renderCards('tv-cards-right', d.penalties.right);
-            };
-        } else {
-            document.getElementById('tv-status').textContent = 'BroadcastChannel non supporté — utilisez le même navigateur';
-        }
-        return; // Pas besoin d'initialiser le reste en mode TV
-    }
-
-    // Répondre aux demandes d'état depuis la TV
-    if (broadcastChannel) {
-        broadcastChannel.onmessage = (event) => {
-            if (event.data.type === 'request_state') broadcastState();
-        };
-    }
-
-    // Initialisation affichage
-    updateCardDisplay();
-    broadcastState();
-});
+    // Init
+    //updateCardDisplay();
+//}
+);

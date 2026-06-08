@@ -646,3 +646,31 @@ body {
     background-color: var(--laser-red) !important;
     box-shadow: 0 0 15px var(--laser-red) !important;
 }
+
+/* === CAST TV === */
+.cast-btn {
+    background-color: #0d2a4a !important;
+    color: #5af !important;
+    border-color: #1a5490 !important;
+    position: relative;
+}
+.cast-btn:hover {
+    background-color: #1e4a7a !important;
+}
+
+/* === UNDO === */
+.undo-btn {
+    background-color: #1e1e1e !important;
+    color: #888 !important;
+    border: 2px dashed #444 !important;
+    width: 100%;
+    font-size: 16px !important;
+}
+.undo-btn:hover {
+    background-color: #2a2a2a !important;
+    color: #ccc !important;
+}
+.undo-btn:active { transform: scale(0.97); }
+
+/* Carton noir visible */
+.card-counter { display: flex !important; }

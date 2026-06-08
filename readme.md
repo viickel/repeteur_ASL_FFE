@@ -7,7 +7,7 @@ Ce projet est un outil d'arbitrage simple et réactif, conçu pour la gestion du
 
 L'interface est optimisée pour une utilisation tactile sur smartphone et est entièrement contrôlable au clavier pour les arbitres sur PC.
 
-le projet est éditer avec la verssion 2025-2026 du reglement ASL-FFE
+Il est possible d'ouvrir une seconde page web et grace au option du mode cast il est possible d'avoir une interface simplifier pour un ecran sur le reseau local
 
 ## ✨ Fonctionnalités Clés
 
@@ -16,56 +16,13 @@ le projet est éditer avec la verssion 2025-2026 du reglement ASL-FFE
 * **Système de Sanctions:** Gestion des fautes avec progression de cartons et affichage visuel de l'état des pénalités pour chaque combattant.
 * **Élimination (Carton Noir):** Déclenche une alerte de fin de match et d'élimination.
 * **Interface Réactive:** Design optimisé pour les écrans de bureau et les smartphones.
-* **Contrôle Total au Clavier:** Raccourcis optimisés pour les claviers AZERTY et QWERTY.
 
 ## 🚀 Installation & Utilisation
 
-Ce projet est entièrement basé sur les technologies web (HTML, CSS, JavaScript) et ne nécessite aucune compilation.
+Ce projet est entièrement basé sur les technologies web (HTML, CSS, JavaScript) et ne nécessite aucune installation.
 
 
-## 🎮 Raccourcis Clavier (AZERTY/QWERTY)
 
-Les raccourcis ont été configurés pour minimiser les conflits avec le navigateur et garantir un contrôle rapide, quelle que soit la configuration de votre clavier.
-
-### 1. Contrôle du Temps et Général (Global)
-
-| Action | Touche | Description |
-| :--- | :--- | :--- |
-| **Démarrer/Pause** | **Espace** (` `) | Met en pause ou redémarre le chronomètre. |
-| **Annuler** | **Ctrl + Z** | Annule la dernière action de point ou de faute. |
-| **Réinitialiser** | **F5** | Réinitialise l'intégralité du match. |
-
----
-
-### 2. Attribution des Points (Points de Touche)
-
-Le ciblage est basé sur la position des touches (`A/Q`, `Z/W`, `E/E`).
-
-| Joueur | Point | Touches AZERTY | Touches QWERTY | Modificateur |
-| :--- | :--- | :--- | :--- | :--- |
-| **Gauche** | **+1** | **A** | **Q** | Touche seule |
-| **Gauche** | **+3** | **Z** | **W** | Touche seule |
-| **Gauche** | **+5** | **E** | **E** | Touche seule |
-| **Droit** | **+1** | **Shift + A** | **Shift + Q** | **Shift** + Touche |
-| **Droit** | **+3** | **Shift + Z** | **Shift + W** | **Shift** + Touche |
-| **Droit** | **+5** | **Shift + E** | **Shift + E** | **Shift** + Touche |
-
----
-
-### 3. Application des Sanctions (Cartons / Fautes)
-
-Le modificateur **`Alt`** est utilisé pour cibler le joueur de droite.
-
-| Joueur | Sanction | Touche | Modificateur | Action Déclenchée |
-| :--- | :--- | :--- | :--- | :--- |
-| **Gauche** | **Blanc** (Grp 1) | **B** | Touche seule | 1ère faute légère |
-| **Gauche** | **Jaune** (Grp 2) | **J** | Touche seule | 1ère faute moyenne |
-| **Gauche** | **Rouge** (Grp 3) | **R** | Touche seule | 1ère faute sévère |
-| **Gauche** | **Noir** (Grp 4) | **N** | Touche seule | Exclusion directe |
-| **Droit** | **Blanc** (Grp 1) | **B** | **Alt** | **Alt** + Touche |
-| **Droit** | **Jaune** (Grp 2) | **J** | **Alt** | **Alt** + Touche |
-| **Droit** | **Rouge** (Grp 3) | **R** | **Alt** | **Alt** + Touche |
-| **Droit** | **Noir** (Grp 4) | **N** | **Alt** | **Alt** + Touche |
 
 ## 🤝 Contribution
 
