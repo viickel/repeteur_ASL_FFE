@@ -1,65 +1,325 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <filter id="gr" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="12" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 512 512"
+   version="1.1"
+   id="svg24"
+   sodipodi:docname="icon.svg"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
+   inkscape:export-filename="favicon-32x32.png"
+   inkscape:export-xdpi="6"
+   inkscape:export-ydpi="6"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview24"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="0.57714845"
+     inkscape:cx="121.28595"
+     inkscape:cy="204.45346"
+     inkscape:window-width="940"
+     inkscape:window-height="784"
+     inkscape:window-x="1617"
+     inkscape:window-y="1080"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg24"
+     inkscape:export-bgcolor="#ffffff00" />
+  <defs
+     id="defs6">
+    <filter
+       id="gr"
+       x="-1.8"
+       y="-0.12"
+       width="4.6"
+       height="1.24">
+      <feGaussianBlur
+         stdDeviation="12"
+         result="blur"
+         id="feGaussianBlur1" />
+      <feMerge
+         id="feMerge2">
+        <feMergeNode
+           in="blur"
+           id="feMergeNode1" />
+        <feMergeNode
+           in="SourceGraphic"
+           id="feMergeNode2" />
+      </feMerge>
     </filter>
-    <filter id="gg" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="12" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    <filter
+       id="gg"
+       x="-1.8"
+       y="-0.12"
+       width="4.6"
+       height="1.24">
+      <feGaussianBlur
+         stdDeviation="12"
+         result="blur"
+         id="feGaussianBlur2" />
+      <feMerge
+         id="feMerge4">
+        <feMergeNode
+           in="blur"
+           id="feMergeNode3" />
+        <feMergeNode
+           in="SourceGraphic"
+           id="feMergeNode4" />
+      </feMerge>
     </filter>
-    <filter id="clash-glow" x="-100%" y="-100%" width="300%" height="300%">
-      <feGaussianBlur stdDeviation="20" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    <filter
+       id="clash-glow"
+       x="-0.6"
+       y="-0.6"
+       width="2.2"
+       height="2.2">
+      <feGaussianBlur
+         stdDeviation="20"
+         result="blur"
+         id="feGaussianBlur4" />
+      <feMerge
+         id="feMerge6">
+        <feMergeNode
+           in="blur"
+           id="feMergeNode5" />
+        <feMergeNode
+           in="SourceGraphic"
+           id="feMergeNode6" />
+      </feMerge>
     </filter>
   </defs>
-
   <!-- Background -->
-  <rect width="512" height="512" rx="90" fill="#0d1117"/>
-
+  <rect
+     width="512"
+     height="512"
+     rx="90"
+     fill="#0d1117"
+     id="rect6" />
   <!-- Red saber: from bottom-left handle to top-right tip -->
   <!-- handle -->
-  <rect x="44" y="400" width="22" height="90" rx="8" transform="rotate(-42,44,400)" fill="#777"/>
-  <rect x="48" y="403" width="14" height="83" rx="5" transform="rotate(-42,48,403)" fill="#aaa"/>
   <!-- guard crosspiece -->
-  <rect x="108" y="328" width="44" height="14" rx="5" transform="rotate(-42,108,328)" fill="#555"/>
   <!-- blade glow layer -->
-  <rect x="122" y="100" width="16" height="240" rx="8" transform="rotate(48,122,100)" fill="#ff004c" filter="url(#gr)" opacity="0.8"/>
   <!-- blade main -->
-  <rect x="125" y="103" width="10" height="236" rx="5" transform="rotate(48,125,103)" fill="#ff3366"/>
   <!-- blade core -->
-  <rect x="128" y="106" width="4" height="230" rx="2" transform="rotate(48,128,106)" fill="white" opacity="0.5"/>
-
   <!-- Green saber: from bottom-right handle to top-left tip -->
   <!-- handle -->
-  <rect x="446" y="400" width="22" height="90" rx="8" transform="rotate(42,446,400)" fill="#777"/>
-  <rect x="450" y="403" width="14" height="83" rx="5" transform="rotate(42,450,403)" fill="#aaa"/>
   <!-- guard crosspiece -->
-  <rect x="360" y="328" width="44" height="14" rx="5" transform="rotate(42,360,328)" fill="#555"/>
   <!-- blade glow layer -->
-  <rect x="374" y="100" width="16" height="240" rx="8" transform="rotate(-48,374,100)" fill="#0cc346" filter="url(#gg)" opacity="0.8"/>
   <!-- blade main -->
-  <rect x="377" y="103" width="10" height="236" rx="5" transform="rotate(-48,377,103)" fill="#2ecc71"/>
   <!-- blade core -->
-  <rect x="380" y="106" width="4" height="230" rx="2" transform="rotate(-48,380,106)" fill="white" opacity="0.5"/>
-
   <!-- Clash point burst -->
-  <circle cx="256" cy="218" r="40" fill="white" filter="url(#clash-glow)" opacity="0.25"/>
-  <circle cx="256" cy="218" r="22" fill="white" opacity="0.35"/>
-  <circle cx="256" cy="218" r="10" fill="white" opacity="0.85"/>
   <!-- Spark lines -->
-  <line x1="256" y1="218" x2="230" y2="180" stroke="white" stroke-width="2" opacity="0.5"/>
-  <line x1="256" y1="218" x2="285" y2="175" stroke="white" stroke-width="2" opacity="0.5"/>
-  <line x1="256" y1="218" x2="210" y2="210" stroke="white" stroke-width="1.5" opacity="0.4"/>
-  <line x1="256" y1="218" x2="300" y2="208" stroke="white" stroke-width="1.5" opacity="0.4"/>
-
+  <g
+     id="g3"
+     transform="matrix(1.3735956,0,0,1.3735956,-98.598561,-146.5973)">
+    <rect
+       x="-161.60362"
+       y="322.86383"
+       width="44"
+       height="14"
+       rx="5"
+       transform="rotate(-42)"
+       fill="#555555"
+       id="rect9" />
+    <rect
+       x="122"
+       y="100"
+       width="16"
+       height="240"
+       rx="8"
+       transform="rotate(48,126.68899,325.23546)"
+       fill="#ff004c"
+       filter="url(#gr)"
+       opacity="0.8"
+       id="rect10" />
+    <rect
+       x="326.01636"
+       y="-101.98077"
+       width="10"
+       height="236"
+       rx="5"
+       transform="rotate(48)"
+       fill="#ff3366"
+       id="rect11" />
+    <rect
+       x="330.2532"
+       y="-102.20281"
+       width="4"
+       height="230"
+       rx="2"
+       transform="rotate(48)"
+       fill="#ffffff"
+       opacity="0.5"
+       id="rect12" />
+    <rect
+       x="488.61258"
+       y="-16.067614"
+       width="44"
+       height="14"
+       rx="5"
+       transform="rotate(42)"
+       fill="#555555"
+       id="rect15" />
+    <rect
+       x="374"
+       y="100"
+       width="16"
+       height="240"
+       rx="8"
+       transform="rotate(-48,372.11627,334.64476)"
+       fill="#0cc346"
+       filter="url(#gg)"
+       opacity="0.8"
+       id="rect16" />
+    <rect
+       x="1.9665499"
+       y="270.04941"
+       width="10"
+       height="236"
+       rx="5"
+       transform="rotate(-48)"
+       fill="#2ecc71"
+       id="rect17" />
+    <rect
+       x="1.7445072"
+       y="274.28622"
+       width="4"
+       height="230"
+       rx="2"
+       transform="rotate(-48)"
+       fill="#ffffff"
+       opacity="0.5"
+       id="rect18" />
+    <circle
+       cx="256"
+       cy="218"
+       r="40"
+       fill="#ffffff"
+       filter="url(#clash-glow)"
+       opacity="0.25"
+       id="circle18" />
+    <circle
+       cx="256"
+       cy="218"
+       r="22"
+       fill="#ffffff"
+       opacity="0.35"
+       id="circle19" />
+    <circle
+       cx="256"
+       cy="218"
+       r="10"
+       fill="#ffffff"
+       opacity="0.85"
+       id="circle20" />
+    <g
+       id="g2"
+       transform="rotate(2.7282536,144.23438,315.18967)">
+      <rect
+         x="305.62091"
+         y="144.1633"
+         width="22"
+         height="90"
+         rx="8"
+         transform="rotate(42)"
+         fill="#777777"
+         id="rect13" />
+      <rect
+         x="310.60089"
+         y="143.71622"
+         width="14"
+         height="83"
+         rx="5"
+         transform="rotate(42)"
+         fill="#aaaaaa"
+         id="rect14" />
+    </g>
+    <g
+       id="g1"
+       transform="rotate(-4.5732213,354.21775,304.70033)">
+      <rect
+         x="49.306591"
+         y="495.21698"
+         width="22"
+         height="90"
+         rx="8"
+         transform="rotate(-42)"
+         fill="#777777"
+         id="rect7" />
+      <rect
+         x="50.271778"
+         y="500.12292"
+         width="14"
+         height="83"
+         rx="5"
+         transform="rotate(-42)"
+         fill="#aaaaaa"
+         id="rect8" />
+    </g>
+    <line
+       x1="256"
+       y1="218"
+       x2="230"
+       y2="180"
+       stroke="#ffffff"
+       stroke-width="2"
+       opacity="0.5"
+       id="line20" />
+    <line
+       x1="256"
+       y1="218"
+       x2="285"
+       y2="175"
+       stroke="#ffffff"
+       stroke-width="2"
+       opacity="0.5"
+       id="line21" />
+    <line
+       x1="256"
+       y1="218"
+       x2="210"
+       y2="210"
+       stroke="#ffffff"
+       stroke-width="1.5"
+       opacity="0.4"
+       id="line22" />
+    <line
+       x1="256"
+       y1="218"
+       x2="300"
+       y2="208"
+       stroke="#ffffff"
+       stroke-width="1.5"
+       opacity="0.4"
+       id="line23" />
+  </g>
   <!-- ASL label -->
-  <text x="256" y="458" text-anchor="middle"
-        font-family="'Segoe UI',Arial,sans-serif"
-        font-size="68" font-weight="900" letter-spacing="10"
-        fill="#c9d1d9">ASL</text>
-  <text x="256" y="494" text-anchor="middle"
-        font-family="'Segoe UI',Arial,sans-serif"
-        font-size="24" font-weight="300" letter-spacing="6"
-        fill="#555">FFE</text>
+  <text
+     x="256.93716"
+     y="427.63599"
+     text-anchor="middle"
+     font-family="'Segoe UI', Arial, sans-serif"
+     font-size="142.172px"
+     font-weight="900"
+     letter-spacing="10"
+     fill="#c9d1d9"
+     id="text23"
+     style="stroke-width:2.09075">ASL</text>
+  <text
+     x="255.42422"
+     y="502.90298"
+     text-anchor="middle"
+     font-family="'Segoe UI', Arial, sans-serif"
+     font-size="50.178px"
+     font-weight="300"
+     letter-spacing="6"
+     fill="#555555"
+     id="text24"
+     style="stroke-width:2.09075">FFE</text>
 </svg>
