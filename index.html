@@ -3,8 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+    <!-- ===== PWA ===== -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0d1117">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ASL-FFE">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
+    <!-- =============== -->
+
     <link rel="stylesheet" type="text/css" href="style.css">
-    <title>RÉPÉTEUR ESCRIME ASL-FFE</title>
+    <title>Répéteur ASL-FFE</title>
+
     <!-- PeerJS CDN -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
@@ -57,10 +71,10 @@
         <div class="chrono-container">
             <div id="matchChrono" class="timer-display">03:00</div>
             <div id="chronoControls" class="button-row force-hide">
-                <button id="customTimeBtn"  class="timer-button">⏱ RÉGLER TEMPS</button>
-                <button id="quickTimer30s"  class="timer-button">30 SEC</button>
+                <button id="customTimeBtn"   class="timer-button">⏱ RÉGLER TEMPS</button>
+                <button id="quickTimer30s"   class="timer-button">30 SEC</button>
                 <button id="medicalBreakBtn" class="timer-button">⚕ PAUSE MED</button>
-                <button id="castBtn" class="timer-button cast-btn"><span id="castStatus">📺 CAST TV</span></button>
+                <button id="castBtn"         class="timer-button cast-btn"><span id="castStatus">📺 CAST TV</span></button>
             </div>
         </div>
 
@@ -107,6 +121,24 @@
         <h1>⚕ PAUSE MÉDICALE</h1>
         <div id="medicalChrono">05:00</div>
         <button id="closeMedicalBtn">Reprendre le match</button>
+    </div>
+</div>
+
+<!-- Bannière d'installation PWA (affichée par JS si disponible) -->
+<div id="pwaInstallBanner" style="display:none; position:fixed; bottom:0; left:0; right:0;
+     background:#161b22; border-top:2px solid #30363d; padding:14px 20px;
+     display:none; align-items:center; justify-content:space-between;
+     z-index:9999; gap:12px;">
+    <div style="display:flex; align-items:center; gap:12px;">
+        <img src="icons/icon-72x72.png" width="44" height="44" style="border-radius:10px;" alt="ASL-FFE">
+        <div>
+            <div style="color:#c9d1d9; font-weight:bold; font-size:14px;">Installer l'appli ASL-FFE</div>
+            <div style="color:#8b949e; font-size:12px;">Accès rapide depuis l'écran d'accueil</div>
+        </div>
+    </div>
+    <div style="display:flex; gap:8px; flex-shrink:0;">
+        <button id="pwaInstallBtn" style="background:#007bff; color:white; border:none; border-radius:8px; padding:8px 16px; font-weight:bold; cursor:pointer; font-size:13px;">Installer</button>
+        <button id="pwaDismissBtn" style="background:transparent; color:#8b949e; border:1px solid #30363d; border-radius:8px; padding:8px 12px; cursor:pointer; font-size:13px;">✕</button>
     </div>
 </div>
 

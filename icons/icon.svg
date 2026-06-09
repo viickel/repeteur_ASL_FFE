@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <filter id="gr" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="gg" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="clash-glow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="20" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="90" fill="#0d1117"/>
+
+  <!-- Red saber: from bottom-left handle to top-right tip -->
+  <!-- handle -->
+  <rect x="44" y="400" width="22" height="90" rx="8" transform="rotate(-42,44,400)" fill="#777"/>
+  <rect x="48" y="403" width="14" height="83" rx="5" transform="rotate(-42,48,403)" fill="#aaa"/>
+  <!-- guard crosspiece -->
+  <rect x="108" y="328" width="44" height="14" rx="5" transform="rotate(-42,108,328)" fill="#555"/>
+  <!-- blade glow layer -->
+  <rect x="122" y="100" width="16" height="240" rx="8" transform="rotate(48,122,100)" fill="#ff004c" filter="url(#gr)" opacity="0.8"/>
+  <!-- blade main -->
+  <rect x="125" y="103" width="10" height="236" rx="5" transform="rotate(48,125,103)" fill="#ff3366"/>
+  <!-- blade core -->
+  <rect x="128" y="106" width="4" height="230" rx="2" transform="rotate(48,128,106)" fill="white" opacity="0.5"/>
+
+  <!-- Green saber: from bottom-right handle to top-left tip -->
+  <!-- handle -->
+  <rect x="446" y="400" width="22" height="90" rx="8" transform="rotate(42,446,400)" fill="#777"/>
+  <rect x="450" y="403" width="14" height="83" rx="5" transform="rotate(42,450,403)" fill="#aaa"/>
+  <!-- guard crosspiece -->
+  <rect x="360" y="328" width="44" height="14" rx="5" transform="rotate(42,360,328)" fill="#555"/>
+  <!-- blade glow layer -->
+  <rect x="374" y="100" width="16" height="240" rx="8" transform="rotate(-48,374,100)" fill="#0cc346" filter="url(#gg)" opacity="0.8"/>
+  <!-- blade main -->
+  <rect x="377" y="103" width="10" height="236" rx="5" transform="rotate(-48,377,103)" fill="#2ecc71"/>
+  <!-- blade core -->
+  <rect x="380" y="106" width="4" height="230" rx="2" transform="rotate(-48,380,106)" fill="white" opacity="0.5"/>
+
+  <!-- Clash point burst -->
+  <circle cx="256" cy="218" r="40" fill="white" filter="url(#clash-glow)" opacity="0.25"/>
+  <circle cx="256" cy="218" r="22" fill="white" opacity="0.35"/>
+  <circle cx="256" cy="218" r="10" fill="white" opacity="0.85"/>
+  <!-- Spark lines -->
+  <line x1="256" y1="218" x2="230" y2="180" stroke="white" stroke-width="2" opacity="0.5"/>
+  <line x1="256" y1="218" x2="285" y2="175" stroke="white" stroke-width="2" opacity="0.5"/>
+  <line x1="256" y1="218" x2="210" y2="210" stroke="white" stroke-width="1.5" opacity="0.4"/>
+  <line x1="256" y1="218" x2="300" y2="208" stroke="white" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- ASL label -->
+  <text x="256" y="458" text-anchor="middle"
+        font-family="'Segoe UI',Arial,sans-serif"
+        font-size="68" font-weight="900" letter-spacing="10"
+        fill="#c9d1d9">ASL</text>
+  <text x="256" y="494" text-anchor="middle"
+        font-family="'Segoe UI',Arial,sans-serif"
+        font-size="24" font-weight="300" letter-spacing="6"
+        fill="#555">FFE</text>
+</svg>

@@ -674,3 +674,43 @@ body {
 
 /* Carton noir visible */
 .card-counter { display: flex !important; }
+
+/* ========= AJOUTS PWA & CORRECTIONS ========= */
+
+/* Carton noir toujours visible */
+.card-counter { display: flex !important; }
+
+/* Bouton UNDO */
+.undo-btn {
+    background-color: #1e1e1e !important;
+    color: #888 !important;
+    border: 2px dashed #444 !important;
+    width: 100%;
+    font-size: 16px !important;
+    transition: background-color 0.2s, color 0.2s !important;
+}
+.undo-btn:hover  { background-color: #2a2a2a !important; color: #ccc !important; }
+.undo-btn:active { transform: scale(0.97); }
+
+/* Bouton CAST TV */
+.cast-btn {
+    background-color: #0d2a4a !important;
+    color: #5af !important;
+    border-color: #1a5490 !important;
+}
+.cast-btn:hover { background-color: #1e4a7a !important; }
+
+/* Bannière install PWA — safe area iPhone */
+#pwaInstallBanner {
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+}
+
+/* Évite que le contenu soit masqué par la bannière install */
+.main-content {
+    padding-bottom: 80px;
+}
+
+/* Mode standalone (installé) : pas de bannière install */
+@media all and (display-mode: standalone) {
+    #pwaInstallBanner { display: none !important; }
+}

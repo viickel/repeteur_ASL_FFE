@@ -17,13 +17,58 @@ document.addEventListener('DOMContentLoaded', () => {
         right: { group1: 0, group2: 0, group3: 0, group4: 0 }
     };
 
+    // ========= PWA — Installation =========
+    let deferredInstallPrompt = null;
+    const installBanner = document.getElementById('pwaInstallBanner');
+    const installBtn    = document.getElementById('pwaInstallBtn');
+    const dismissBtn    = document.getElementById('pwaDismissBtn');
+
+    // Enregistrement du Service Worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./service-worker.js')
+            .then(reg => console.log('[PWA] Service Worker enregistré:', reg.scope))
+            .catch(err => console.warn('[PWA] Erreur SW:', err));
+    }
+
+    // Capture de l'événement d'installation natif (Chrome/Edge/Android)
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault(); // Empêche le mini-prompt automatique
+        deferredInstallPrompt = e;
+        // Affiche notre bannière personnalisée après 2 secondes
+        setTimeout(() => {
+            if (installBanner) installBanner.style.display = 'flex';
+        }, 2000);
+    });
+
+    if (installBtn) {
+        installBtn.addEventListener('click', async () => {
+            if (!deferredInstallPrompt) return;
+            installBanner.style.display = 'none';
+            deferredInstallPrompt.prompt();
+            const { outcome } = await deferredInstallPrompt.userChoice;
+            console.log('[PWA] Choix utilisateur:', outcome);
+            deferredInstallPrompt = null;
+        });
+    }
+
+    if (dismissBtn) {
+        dismissBtn.addEventListener('click', () => {
+            installBanner.style.display = 'none';
+        });
+    }
+
+    // Quand l'app est installée, cacher la bannière
+    window.addEventListener('appinstalled', () => {
+        if (installBanner) installBanner.style.display = 'none';
+        deferredInstallPrompt = null;
+        console.log('[PWA] Application installée !');
+    });
+
     // ========= PEER.JS — CAST TV =========
     let peer = null;
-    let tvConnection = null;   // côté tablette : connexion vers la TV
-    let sessionCode = null;    // code 4 chiffres généré par la tablette
-    let peerRole = 'controller'; // 'controller' ou 'tv'
+    let tvConnection = null;
+    let sessionCode = null;
 
-    // Génère un code de session lisible (4 chiffres)
     function generateSessionCode() {
         return 'ASL-' + Math.floor(1000 + Math.random() * 9000);
     }
@@ -41,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tvConnection = conn;
             conn.on('open', () => {
                 updateCastStatus('connected', sessionCode);
-                broadcastState(); // envoie l'état immédiatement
+                broadcastState();
             });
             conn.on('close', () => {
                 tvConnection = null;
@@ -57,7 +102,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function initPeerAsTV(code) {
-        peerRole = 'tv';
         peer = new Peer({ debug: 0 });
 
         peer.on('open', () => {
@@ -71,12 +115,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.type === 'state') renderTVState(data);
             });
             conn.on('close', () => updateTVStatus('disconnected'));
-            conn.on('error', (e) => updateTVStatus('error'));
+            conn.on('error', () => updateTVStatus('error'));
         });
 
         peer.on('error', (e) => {
             console.warn('TV PeerJS error:', e);
-            updateTVStatus('error: code invalide ?');
+            updateTVStatus('error — code invalide ?');
         });
     }
 
@@ -95,161 +139,78 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch(e) { console.warn('broadcast error:', e); }
     }
 
-    // Met à jour le petit indicateur de cast dans l'UI contrôleur
     function updateCastStatus(status, code) {
         const el = document.getElementById('castStatus');
         if (!el) return;
         const map = {
-            idle:      { text: '📺 CAST TV',          color: '#555' },
-            waiting:   { text: `⏳ Code : ${code}`,    color: '#e4a300' },
-            connected: { text: `✅ TV : ${code}`,      color: '#0cc346' },
-            error:     { text: '❌ Erreur PeerJS',     color: '#ff004c' },
+            idle:      { text: '📺 CAST TV',       bg: 'transparent', color: '#5af' },
+            waiting:   { text: `⏳ ${code}`,        bg: '#e4a300',     color: '#111' },
+            connected: { text: `✅ ${code}`,        bg: '#0cc346',     color: '#0d1117' },
+            error:     { text: '❌ Erreur PeerJS',  bg: '#ff004c',     color: '#fff' },
         };
         const s = map[status] || map.idle;
-        el.textContent = s.text;
-        el.style.background = s.color;
-        el.style.color = (status === 'waiting') ? '#111' : '#fff';
+        el.textContent    = s.text;
+        el.style.background = s.bg;
+        el.style.color    = s.color;
+        el.style.padding  = status !== 'idle' ? '2px 8px' : '';
+        el.style.borderRadius = '6px';
     }
 
-    // ========= MODE TV =========
+    // =========  MODE TV  =========
     function showTVMode() {
-        // Remplace tout le body par l'interface TV
         document.body.innerHTML = `
         <style>
-            * { margin:0; padding:0; box-sizing:border-box; }
-            body {
-                background: #0a0d12;
-                font-family: 'Courier New', monospace;
-                height: 100vh;
-                overflow: hidden;
-                display: flex;
-                flex-direction: column;
-            }
-            #tv-status-bar {
-                background: #111;
-                padding: 6px 20px;
-                font-size: 13px;
-                color: #444;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            #tv-main {
-                flex: 1;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 0;
-            }
-            .tv-side {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                height: 100%;
-                padding: 20px;
-                position: relative;
-            }
-            .tv-side-left  { border-right: 2px solid #1a1a2e; }
-            .tv-side-right { border-left:  2px solid #1a1a2e; }
-            .tv-label {
-                font-size: 2vw;
-                letter-spacing: 6px;
-                font-weight: bold;
-                margin-bottom: 10px;
-                text-transform: uppercase;
-            }
-            .tv-score {
-                font-size: 28vw;
-                font-weight: 900;
-                line-height: 0.85;
-                font-variant-numeric: tabular-nums;
-            }
-            .tv-left-color  { color: #ff004c; text-shadow: 0 0 40px rgba(255,0,76,0.5); }
-            .tv-right-color { color: #0cc346; text-shadow: 0 0 40px rgba(12,195,70,0.5); }
-            .tv-cards {
-                display: flex;
-                gap: 8px;
-                margin-top: 20px;
-                min-height: 50px;
-                align-items: center;
-            }
-            .tv-card {
-                width: 32px;
-                height: 46px;
-                border-radius: 5px;
-                border: 1px solid rgba(255,255,255,0.15);
-                box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-            }
-            .tv-card-white  { background: #f0f6fc; }
-            .tv-card-yellow { background: #e4c700; }
-            .tv-card-red    { background: #ff004c; }
-            .tv-card-black  { background: #111; border-color: #555; }
-            #tv-center {
-                width: 180px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 12px;
-                flex-shrink: 0;
-            }
-            #tv-chrono {
-                font-size: 5vw;
-                font-weight: bold;
-                color: #c9d1d9;
-                letter-spacing: 4px;
-                padding: 10px 20px;
-                border: 2px solid #222;
-                border-radius: 10px;
-                background: #111;
-                min-width: 160px;
-                text-align: center;
-            }
-            #tv-chrono.running { border-color: #0cc346; color: #0cc346; }
-            #tv-chrono.medical { border-color: #ff004c; color: #ff004c; animation: blink 1s infinite; }
-            #tv-timer-label {
-                font-size: 12px;
-                color: #444;
-                letter-spacing: 2px;
-            }
-            #tv-vs {
-                font-size: 1.5vw;
-                color: #333;
-                letter-spacing: 4px;
-            }
-            #tv-conn-status {
-                font-size: 12px;
-                padding: 4px 10px;
-                border-radius: 20px;
-                background: #111;
-            }
-            @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+            *{margin:0;padding:0;box-sizing:border-box;}
+            body{background:#0a0d12;font-family:'Courier New',monospace;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+            #tv-bar{background:#111;padding:6px 20px;font-size:13px;color:#444;display:flex;justify-content:space-between;align-items:center;}
+            #tv-main{flex:1;display:flex;align-items:center;justify-content:center;}
+            .tv-side{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:20px;}
+            .tv-side-l{border-right:2px solid #1a1a2e;}
+            .tv-side-r{border-left:2px solid #1a1a2e;}
+            .tv-label{font-size:2vw;letter-spacing:6px;font-weight:bold;margin-bottom:10px;text-transform:uppercase;}
+            .tv-score{font-size:30vw;font-weight:900;line-height:.85;font-variant-numeric:tabular-nums;}
+            .tv-lc{color:#ff004c;text-shadow:0 0 50px rgba(255,0,76,.5);}
+            .tv-rc{color:#0cc346;text-shadow:0 0 50px rgba(12,195,70,.5);}
+            .tv-cards{display:flex;gap:8px;margin-top:18px;min-height:52px;align-items:center;}
+            .tv-card{width:34px;height:48px;border-radius:5px;border:1px solid rgba(255,255,255,.15);box-shadow:0 2px 8px rgba(0,0,0,.5);}
+            .tv-card-white{background:#f0f6fc;}
+            .tv-card-yellow{background:#e4c700;}
+            .tv-card-red{background:#ff004c;}
+            .tv-card-black{background:#111;border-color:#555;}
+            #tv-center{width:200px;display:flex;flex-direction:column;align-items:center;gap:14px;flex-shrink:0;}
+            #tv-chrono{font-size:5.5vw;font-weight:bold;color:#c9d1d9;letter-spacing:4px;padding:12px 20px;border:2px solid #222;border-radius:12px;background:#111;min-width:170px;text-align:center;transition:color .3s,border-color .3s;}
+            #tv-chrono.running{border-color:#0cc346;color:#0cc346;}
+            #tv-chrono.medical{border-color:#ff004c;color:#ff004c;animation:blink 1s infinite;}
+            #tv-vs{font-size:1.4vw;color:#2a2a2a;letter-spacing:4px;}
+            #tv-conn{font-size:12px;padding:4px 10px;border-radius:20px;}
+            @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
         </style>
-        <div id="tv-status-bar">
-            <span>ASL-FFE — Répéteur Escrime</span>
-            <span id="tv-conn-status" style="color:#e4a300">⏳ Connexion...</span>
+        <div id="tv-bar">
+            <span style="display:flex;align-items:center;gap:8px;">
+                <img src="icons/icon-72x72.png" width="24" height="24" style="border-radius:5px;" onerror="this.style.display='none'">
+                ASL-FFE — Répéteur Escrime
+            </span>
+            <span id="tv-conn" style="color:#e4a300">⏳ En attente...</span>
             <span id="tv-clock"></span>
         </div>
         <div id="tv-main">
-            <div class="tv-side tv-side-left">
-                <div class="tv-label tv-left-color">● Rouge</div>
-                <div class="tv-score tv-left-color" id="tv-left">0</div>
+            <div class="tv-side tv-side-l">
+                <div class="tv-label tv-lc">● Rouge</div>
+                <div class="tv-score tv-lc" id="tv-left">0</div>
                 <div class="tv-cards" id="tv-cards-left"></div>
             </div>
             <div id="tv-center">
-                <div id="tv-timer-label">TEMPS</div>
+                <div style="font-size:11px;color:#333;letter-spacing:2px;">TEMPS</div>
                 <div id="tv-chrono">03:00</div>
                 <div id="tv-vs">VS</div>
             </div>
-            <div class="tv-side tv-side-right">
-                <div class="tv-label tv-right-color">● Vert</div>
-                <div class="tv-score tv-right-color" id="tv-right">0</div>
+            <div class="tv-side tv-side-r">
+                <div class="tv-label tv-rc">● Vert</div>
+                <div class="tv-score tv-rc" id="tv-right">0</div>
                 <div class="tv-cards" id="tv-cards-right"></div>
             </div>
-        </div>
-        `;
-        // Horloge temps réel
+        </div>`;
+
         setInterval(() => {
             const el = document.getElementById('tv-clock');
             if (el) el.textContent = new Date().toLocaleTimeString('fr-FR');
@@ -257,28 +218,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateTVStatus(status) {
-        const el = document.getElementById('tv-conn-status');
+        const el = document.getElementById('tv-conn');
         if (!el) return;
         const map = {
-            connected:    { text: '✅ Connecté',       color: '#0cc346' },
-            disconnected: { text: '❌ Déconnecté',     color: '#ff004c' },
-            error:        { text: '⚠️ Erreur',         color: '#ff004c' },
+            connected:    { text: '✅ Connecté',   color: '#0cc346' },
+            disconnected: { text: '❌ Déconnecté', color: '#ff004c' },
+            error:        { text: '⚠️ Erreur',     color: '#ff004c' },
         };
         const s = map[status];
         if (s) { el.textContent = s.text; el.style.color = s.color; }
     }
 
     function renderTVState(data) {
-        const setEl = (id, val) => { const e = document.getElementById(id); if(e) e.textContent = val; };
-        setEl('tv-left',   data.left);
-        setEl('tv-right',  data.right);
-        setEl('tv-chrono', data.time);
-
-        const chrono = document.getElementById('tv-chrono');
-        if (chrono) {
-            chrono.className = data.medical ? 'medical' : (data.running ? 'running' : '');
-        }
-
+        const set = (id, v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+        set('tv-left',  data.left);
+        set('tv-right', data.right);
+        set('tv-chrono',data.time);
+        const ch = document.getElementById('tv-chrono');
+        if (ch) ch.className = data.medical ? 'medical' : (data.running ? 'running' : '');
         renderTVCards('tv-cards-left',  data.penalties.left);
         renderTVCards('tv-cards-right', data.penalties.right);
     }
@@ -297,80 +254,54 @@ document.addEventListener('DOMContentLoaded', () => {
         el.innerHTML = cards.map(c => `<div class="tv-card tv-card-${c}"></div>`).join('');
     }
 
-    // ========= UI MODALE CAST =========
+    // ========= MODALE CAST =========
     function showCastModal() {
         let modal = document.getElementById('castModal');
         if (modal) { modal.style.display = 'flex'; return; }
 
         modal = document.createElement('div');
         modal.id = 'castModal';
-        modal.style.cssText = `
-            position:fixed; top:0; left:0; width:100%; height:100%;
-            background:rgba(0,0,0,0.88); display:flex;
-            justify-content:center; align-items:center; z-index:3000;
-        `;
+        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;justify-content:center;align-items:center;z-index:3000;';
         modal.innerHTML = `
-        <div style="
-            background:#161b22; border:2px solid #30363d; border-radius:16px;
-            padding:2em; max-width:420px; width:90%; color:#c9d1d9; text-align:center;
-        ">
-            <h2 style="margin:0 0 1em; color:#c9d1d9;">📺 CAST TV via PeerJS</h2>
+        <div style="background:#161b22;border:2px solid #30363d;border-radius:16px;padding:2em;max-width:420px;width:90%;color:#c9d1d9;text-align:center;">
+            <h2 style="margin:0 0 1em;">📺 CAST TV via PeerJS</h2>
 
-            <div id="cast-section-controller" style="margin-bottom:1.5em;">
-                <p style="color:#8b949e; font-size:14px; margin-bottom:12px;">
-                    Génère un code sur cette tablette, puis entre-le sur la TV.
+            <div style="margin-bottom:1.5em;">
+                <p style="color:#8b949e;font-size:14px;margin-bottom:12px;">
+                    Sur la <strong>tablette arbitre</strong> : génère un code, puis entre-le sur l'écran TV.
                 </p>
-                <button id="castStartBtn" style="
-                    background:#007bff; color:#fff; border:none; border-radius:8px;
-                    padding:12px 24px; font-size:16px; font-weight:bold; cursor:pointer; width:100%;
-                ">📡 Activer le mode CONTRÔLEUR</button>
-                <div id="castCodeDisplay" style="
-                    margin-top:12px; font-size:2em; font-weight:bold;
-                    letter-spacing:8px; color:#e4c700; display:none;
-                    padding:10px; background:#0d1117; border-radius:8px;
-                "></div>
-                <div id="castCodeHint" style="color:#555; font-size:12px; margin-top:6px; display:none;">
-                    Entre ce code sur l'écran TV
-                </div>
+                <button id="castStartBtn" style="background:#007bff;color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:16px;font-weight:bold;cursor:pointer;width:100%;">
+                    📡 Mode CONTRÔLEUR (tablette)
+                </button>
+                <div id="castCodeDisplay" style="display:none;margin-top:14px;font-size:2.2em;font-weight:bold;letter-spacing:8px;color:#e4c700;padding:12px;background:#0d1117;border-radius:8px;border:1px solid #30363d;"></div>
+                <div id="castCodeHint" style="display:none;color:#555;font-size:12px;margin-top:6px;">Entre ce code sur l'écran TV ci-dessous</div>
             </div>
 
-            <hr style="border-color:#30363d; margin:1em 0;">
+            <hr style="border-color:#30363d;margin:1em 0;">
 
-            <div id="cast-section-tv">
-                <p style="color:#8b949e; font-size:14px; margin-bottom:12px;">
-                    Sur la TV, entre le code affiché sur la tablette.
+            <div>
+                <p style="color:#8b949e;font-size:14px;margin-bottom:12px;">
+                    Sur la <strong>TV / grand écran</strong> : entre le code de la tablette.
                 </p>
-                <div style="display:flex; gap:8px;">
+                <div style="display:flex;gap:8px;">
                     <input id="castCodeInput" type="text" placeholder="ASL-XXXX"
-                        style="
-                            flex:1; background:#0d1117; border:2px solid #30363d;
-                            border-radius:8px; padding:10px; color:#c9d1d9;
-                            font-size:18px; letter-spacing:4px; text-align:center;
-                            font-weight:bold; text-transform:uppercase;
-                        ">
-                    <button id="castConnectBtn" style="
-                        background:#0cc346; color:#0d1117; border:none; border-radius:8px;
-                        padding:10px 16px; font-size:14px; font-weight:bold; cursor:pointer;
-                    ">TV →</button>
+                        style="flex:1;background:#0d1117;border:2px solid #30363d;border-radius:8px;padding:10px;color:#c9d1d9;font-size:18px;letter-spacing:4px;text-align:center;font-weight:bold;text-transform:uppercase;">
+                    <button id="castConnectBtn" style="background:#0cc346;color:#0d1117;border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:bold;cursor:pointer;">
+                        MODE TV →
+                    </button>
                 </div>
             </div>
 
-            <button id="castCloseBtn" style="
-                margin-top:1.5em; background:transparent; border:1px solid #30363d;
-                color:#8b949e; border-radius:8px; padding:8px 20px; cursor:pointer;
-            ">Fermer</button>
-        </div>
-        `;
+            <button id="castCloseBtn" style="margin-top:1.5em;background:transparent;border:1px solid #30363d;color:#8b949e;border-radius:8px;padding:8px 20px;cursor:pointer;">Fermer</button>
+        </div>`;
         document.body.appendChild(modal);
 
         document.getElementById('castStartBtn').addEventListener('click', () => {
-            if (peer) { peer.destroy(); peer = null; }
+            if (peer) { peer.destroy(); peer = null; sessionCode = null; }
             initPeerAsController();
             document.getElementById('castCodeDisplay').style.display = 'block';
-            document.getElementById('castCodeHint').style.display = 'block';
-            document.getElementById('castCodeDisplay').textContent = '...';
-
-            // Attend que PeerJS confirme l'ID
+            document.getElementById('castCodeHint').style.display    = 'block';
+            document.getElementById('castCodeDisplay').textContent    = '⏳...';
             const wait = setInterval(() => {
                 if (sessionCode) {
                     clearInterval(wait);
@@ -381,43 +312,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('castConnectBtn').addEventListener('click', () => {
             const code = document.getElementById('castCodeInput').value.trim().toUpperCase();
-            if (!code.startsWith('ASL-') || code.length < 8) {
-                alert('Code invalide. Format attendu : ASL-XXXX');
+            if (!code.match(/^ASL-\d{4}$/)) {
+                alert('Code invalide. Format attendu : ASL-XXXX (ex: ASL-4823)');
                 return;
             }
-            document.getElementById('castModal').style.display = 'none';
+            modal.style.display = 'none';
             initPeerAsTV(code);
         });
 
         document.getElementById('castCloseBtn').addEventListener('click', () => {
             modal.style.display = 'none';
         });
+
+        // Fermer en cliquant en dehors
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.style.display = 'none';
+        });
     }
 
-    // ========= DOM =========
-    const matchChronoDisplay = document.getElementById('matchChrono');
-    const customTimeBtn      = document.getElementById('customTimeBtn');
-    const quickTimer30s      = document.getElementById('quickTimer30s');
-    const startStopButton    = document.getElementById('startStopButton');
-    const resetBtn           = document.getElementById('resetBtn');
-    const leftScoreDisplay   = document.getElementById('left_score');
-    const rightScoreDisplay  = document.getElementById('right_score');
-    const chronoControls     = document.getElementById('chronoControls');
-    const medicalOverlay     = document.getElementById('medicalOverlay');
+    // ========= SÉLECTION DOM =========
+    const matchChronoDisplay   = document.getElementById('matchChrono');
+    const customTimeBtn        = document.getElementById('customTimeBtn');
+    const quickTimer30s        = document.getElementById('quickTimer30s');
+    const startStopButton      = document.getElementById('startStopButton');
+    const resetBtn             = document.getElementById('resetBtn');
+    const leftScoreDisplay     = document.getElementById('left_score');
+    const rightScoreDisplay    = document.getElementById('right_score');
+    const chronoControls       = document.getElementById('chronoControls');
+    const medicalOverlay       = document.getElementById('medicalOverlay');
     const medicalChronoDisplay = document.getElementById('medicalChrono');
-    const closeMedicalBtn    = document.getElementById('closeMedicalBtn');
-    const undoBtn            = document.getElementById('undoBtn');
-    const faultButtons       = document.querySelectorAll('.fault-btn');
-    const pointButtons       = document.querySelectorAll('.point-btn');
-    const castBtn            = document.getElementById('castBtn');
+    const closeMedicalBtn      = document.getElementById('closeMedicalBtn');
+    const undoBtn              = document.getElementById('undoBtn');
+    const faultButtons         = document.querySelectorAll('.fault-btn');
+    const pointButtons         = document.querySelectorAll('.point-btn');
+    const castBtn              = document.getElementById('castBtn');
 
     // ========= UTILITAIRES =========
     function formatTime(s) {
-        const m = Math.floor(s / 60);
-        const sec = s % 60;
-        return `${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
+        return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
     }
 
+    // Sauvegarde l'état COMPLET — appelée UNE SEULE FOIS par action utilisateur
     function saveStateToHistory() {
         if (scoreHistory.length >= MAX_HISTORY_SIZE) scoreHistory.shift();
         scoreHistory.push({
@@ -428,27 +363,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateCardDisplay() {
-        ['left', 'right'].forEach(player => {
+        ['left','right'].forEach(player => {
             const p = penalties[player];
-            let white = 0, yellow = 0, red = 0, black = 0;
-            if (p.group1 >= 1) white = 1;
-            if (p.group1 >= 2) yellow += p.group1 - 1;
-            if (p.group2 >= 1) yellow += 1;
-            if (p.group2 >= 2) red    += p.group2 - 1;
-            if (p.group3 >= 1) red    += 1;
-            if (p.group3 >= 2) black  += 1;
-            if (p.group4 >= 1) black  += 1;
-
-            [['white',white],['yellow',yellow],['red',red],['black',black]].forEach(([c,n]) => {
+            let w=0,y=0,r=0,b=0;
+            if (p.group1>=1) w=1;
+            if (p.group1>=2) y+=p.group1-1;
+            if (p.group2>=1) y+=1;
+            if (p.group2>=2) r+=p.group2-1;
+            if (p.group3>=1) r+=1;
+            if (p.group3>=2) b+=1;
+            if (p.group4>=1) b+=1;
+            [['white',w],['yellow',y],['red',r],['black',b]].forEach(([c,n]) => {
                 const el = document.getElementById(`${player}_card_${c}`);
                 if (!el) return;
-                el.textContent = n;
+                el.textContent  = n;
                 el.style.opacity = n > 0 ? '1' : '0.2';
             });
         });
     }
 
-    // Applique un score SANS sauvegarder (la sauvegarde est faite en amont)
+    // Applique score SANS sauvegarder (la sauvegarde est faite en amont)
     function applyScore(player, points) {
         if (player === 'left') {
             currentMatchScoreLeft = Math.max(0, currentMatchScoreLeft + points);
@@ -476,7 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clearInterval(timerId);
         isTimerRunning = false;
         matchTimeInSeconds = seconds;
-        matchChronoDisplay.textContent = formatTime(matchTimeInSeconds);
+        matchChronoDisplay.textContent = formatTime(seconds);
         startStopButton.textContent = 'START';
         startStopButton.style.backgroundColor = 'green';
         broadcastState();
@@ -528,10 +462,10 @@ document.addEventListener('DOMContentLoaded', () => {
         penalties.left  = { group1:0, group2:0, group3:0, group4:0 };
         penalties.right = { group1:0, group2:0, group3:0, group4:0 };
         scoreHistory.length = 0;
-        leftScoreDisplay.textContent  = '0';
-        rightScoreDisplay.textContent = '0';
+        leftScoreDisplay.textContent   = '0';
+        rightScoreDisplay.textContent  = '0';
         matchChronoDisplay.textContent = '03:00';
-        startStopButton.textContent = 'START';
+        startStopButton.textContent    = 'START';
         startStopButton.style.backgroundColor = 'green';
         resetBtn.style.display = 'none';
         medicalOverlay.classList.add('hidden');
@@ -539,21 +473,19 @@ document.addEventListener('DOMContentLoaded', () => {
         broadcastState();
     }
 
-    // FIX BUG : saveStateToHistory UNE SEULE FOIS, applyScore ne sauvegarde plus
+    // FIX BUG PRINCIPAL : saveStateToHistory appelée UNE SEULE FOIS
     function determineCardAndPoints(player, group) {
         saveStateToHistory();
 
-        let card = '', points = 0, endsMatch = false;
-        const opponent = player === 'left' ? 'right' : 'left';
+        let card='', points=0, endsMatch=false;
+        const opponent = player==='left' ? 'right' : 'left';
 
-        if (group !== 4) penalties[player]['group' + group]++;
-        else             penalties[player]['group4']++;
-
-        const lvl = penalties[player]['group' + group];
+        penalties[player]['group'+group]++;
+        const lvl = penalties[player]['group'+group];
 
         switch(group) {
-            case 1: card = lvl===1 ? 'white':'yellow';  points = lvl===1 ? 0:3; break;
-            case 2: card = lvl===1 ? 'yellow':'red';    points = lvl===1 ? 3:5; break;
+            case 1: card=lvl===1?'white':'yellow'; points=lvl===1?0:3; break;
+            case 2: card=lvl===1?'yellow':'red';   points=lvl===1?3:5; break;
             case 3:
                 if (lvl===1) { card='red';   points=5; }
                 else         { card='black'; endsMatch=true; }
@@ -587,10 +519,10 @@ document.addEventListener('DOMContentLoaded', () => {
             el.addEventListener('click', () => el.remove());
             document.body.appendChild(el);
         }
-        const bg = {black:'#111',red:'#ff004c',yellow:'#e4c700',white:'#f0f6fc'}[color]||'#222';
-        const fg = (color==='white'||color==='yellow') ? '#111':'#fff';
-        el.innerHTML = `<div style="background:${bg};color:${fg};padding:2em 3em;border-radius:15px;text-align:center;font-size:1.5em;font-weight:bold;max-width:80%;border:3px solid rgba(255,255,255,0.2);white-space:pre-line;">${message}<div style="margin-top:1em;font-size:0.6em;opacity:0.7;">Appuyez pour fermer</div></div>`;
-        el.style.display='flex';
+        const bg={black:'#111',red:'#ff004c',yellow:'#e4c700',white:'#f0f6fc'}[color]||'#222';
+        const fg=(color==='white'||color==='yellow')?'#111':'#fff';
+        el.innerHTML = `<div style="background:${bg};color:${fg};padding:2em 3em;border-radius:15px;text-align:center;font-size:1.5em;font-weight:bold;max-width:80%;border:3px solid rgba(255,255,255,0.2);white-space:pre-line;">${message}<div style="margin-top:1em;font-size:.6em;opacity:.7;">Appuyer pour fermer</div></div>`;
+        el.style.display = 'flex';
     }
 
     function startMedicalBreak() {
@@ -627,10 +559,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function promptForCustomTime() {
-        const input = prompt('Durée du match (MM:SS) :');
+        const input = prompt('Durée du match (MM:SS, ex: 03:00) :');
         if (!input) return;
         const m = input.match(/^(\d{1,2}):(\d{2})$/);
-        if (!m || parseInt(m[2])>=60) { alert('Format invalide (ex: 03:00)'); return; }
+        if (!m || parseInt(m[2]) >= 60) { alert('Format invalide (ex: 03:00)'); return; }
         setMatchTime(parseInt(m[1])*60 + parseInt(m[2]));
     }
 
@@ -638,13 +570,11 @@ document.addEventListener('DOMContentLoaded', () => {
     startStopButton.addEventListener('click', startStopTimer);
     resetBtn.addEventListener('click', resetMatch);
     undoBtn.addEventListener('click', undoLastAction);
-    medicalBreakBtn.addEventListener('click', startMedicalBreak);
     closeMedicalBtn.addEventListener('click', endMedicalBreak);
     quickTimer30s.addEventListener('click', () => setMatchTime(30));
     customTimeBtn.addEventListener('click', promptForCustomTime);
+    document.getElementById('medicalBreakBtn').addEventListener('click', startMedicalBreak);
     if (castBtn) castBtn.addEventListener('click', showCastModal);
-
-    document.getElementById('medicalBreakBtn')?.addEventListener('click', startMedicalBreak);
 
     matchChronoDisplay.addEventListener('click', () => {
         chronoControls.classList.toggle('force-hide');
@@ -662,36 +592,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
 
     // ========= RACCOURCIS CLAVIER =========
-    //document.addEventListener('keydown', (e) => {
-    //    if (e.repeat) return;
-    //    const key  = e.key.toLowerCase();
-    //    const code = e.code;
-    //    const noMod    = !e.shiftKey && !e.ctrlKey && !e.altKey;
-    //    const shiftOnly = e.shiftKey && !e.ctrlKey && !e.altKey;
-    //    const altOnly   = e.altKey  && !e.shiftKey && !e.ctrlKey;
+    document.addEventListener('keydown', (e) => {
+        if (e.repeat) return;
+        const key  = e.key.toLowerCase();
+        const code = e.code;
+        const noMod     = !e.shiftKey && !e.ctrlKey && !e.altKey;
+        const shiftOnly = e.shiftKey  && !e.ctrlKey && !e.altKey;
+        const altOnly   = e.altKey   && !e.shiftKey && !e.ctrlKey;
 
-        // Points
-    //    const pm = {'KeyX':1,'KeyQ':1,'KeyZ':3,'KeyW':3,'KeyE':5};
-    //    if (code in pm) {
-    //        if (noMod)    { e.preventDefault(); saveStateToHistory(); applyScore('left',  pm[code]); broadcastState(); return; }
-    //        if (shiftOnly){ e.preventDefault(); saveStateToHistory(); applyScore('right', pm[code]); broadcastState(); return; }
-    //    }
+        // Points gauche/droite
+        const pm = { 'KeyA':1,'KeyQ':1,'KeyZ':3,'KeyW':3,'KeyE':5 };
+        if (code in pm) {
+            if (noMod)     { e.preventDefault(); saveStateToHistory(); applyScore('left',  pm[code]); broadcastState(); return; }
+            if (shiftOnly) { e.preventDefault(); saveStateToHistory(); applyScore('right', pm[code]); broadcastState(); return; }
+        }
         // Cartons
-    //    const cm = {'b':1,'j':2,'r':3,'n':4};
-    //    if (key in cm && (noMod||altOnly) && !e.ctrlKey) {
-    //        e.preventDefault();
-    //        const player = noMod ? 'left' : 'right';
-    //        const s = determineCardAndPoints(player, cm[key]);
-    //        if (s.endsMatch) handleElimination(player);
-    //        return;
+        const cm = { 'b':1,'j':2,'r':3,'n':4 };
+        if (key in cm && !e.ctrlKey && (noMod||altOnly)) {
+            e.preventDefault();
+            const s = determineCardAndPoints(noMod?'left':'right', cm[key]);
+            if (s.endsMatch) handleElimination(noMod?'left':'right');
+            return;
         }
         // Globaux
-    //    if (key===' ')  { e.preventDefault(); startStopTimer(); }
-    //    if (key==='z' && e.ctrlKey) { e.preventDefault(); undoLastAction(); }
-    //    if (key==='f5') { e.preventDefault(); resetMatch(); }
-    //});
+        if (key===' ')                   { e.preventDefault(); startStopTimer(); }
+        if (key==='z' && e.ctrlKey)      { e.preventDefault(); undoLastAction(); }
+        if (e.key==='F5')                { e.preventDefault(); resetMatch(); }
+    });
 
-    // Init
-    //updateCardDisplay();
-//}
-);
+    // ========= INIT =========
+    updateCardDisplay();
+});
