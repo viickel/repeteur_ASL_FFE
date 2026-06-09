@@ -1,5 +1,5 @@
 # ⚔️ Repeteur d'escrime Sabre Laser 
-https://viickel.github.io/repeteur_ASL_FFE.github.io/
+https://viickel.github.io/repeteur_ASL_FFE/
 
 ## 📋 Description du Projet
 
@@ -28,23 +28,23 @@ Voici comment utiliser le système lors d'une compétition :
 
 Cliquez sur les boutons de groupes de fautes (Grp 1 à 4). Le système calcule automatiquement la couleur du carton selon la progression :
 
-    Groupe 1: Carton blanc -> Carton jaune.
+ - Groupe 1: Carton blanc -> Carton jaune.
 
-    Groupe 2: Carton jaune -> Carton rouge.
+ - Groupe 2: Carton jaune -> Carton rouge.
 
-    Groupe 3: Carton rouge -> Carton noir (Élimination).
+ - Groupe 3: Carton rouge -> Carton noir (Élimination).
 
-    Groupe 4: Carton noir immédiat.
+ - Groupe 4: Carton noir immédiat.
 
 3. Diffusion sur écran TV (Mode Cast)
 
 Pour projeter le score sur un écran distant :
 
-    Côté Arbitre (Tablette) : Cliquez sur le bouton "📺 CAST TV" puis, sur "📡 Activer le mode CONTRÔLEUR" Un code unique de type ASL-XXXX s'affiche.
+ - Côté Arbitre (Tablette) : Cliquez sur le bouton "📺 CAST TV" puis, sur "📡 Activer le mode CONTRÔLEUR" Un code unique de type ASL-XXXX s'affiche.
 
-    Côté TV (PC relié) : Ouvrez la même page, saisissez le code ASL-XXXX affiché sur la tablette et cliquez sur "TV".
+ - Côté TV (PC relié) : Ouvrez la même page, saisissez le code ASL-XXXX affiché sur la tablette et cliquez sur "TV".
 
-    Synchronisation : Une fois connecté, les scores, le chrono et les cartons se mettent à jour en temps réel sur la TV.
+ - Synchronisation : Une fois connecté, les scores, le chrono et les cartons se mettent à jour en temps réel sur la TV.
 
 ## 🤝 Contribution
 
