@@ -3,7 +3,7 @@ https://viickel.github.io/repeteur_ASL_FFE/
 
 ## 📋 Description du Projet
 
-Outil d'arbitrage réactif conçu pour la gestion du temps, des scores et des sanctions lors de matchs de sabre laser. Interface optimisée pour le tactile (tablette/smartphone) et contrôlable au clavier pour une précision maximale en tournoi.
+Outil d'arbitrage au sabre laser réactif conçu pour la gestion du temps, des scores et des sanctions lors de matchs de sabre laser. Interface optimisée pour le tactile (tablette/smartphone) et contrôlable au clavier pour une précision maximale en tournoi.
 
 ## ✨ Fonctionnalités Clés
 
