@@ -4,7 +4,7 @@
   "description": "Interface d'arbitrage pour l'escrime au sabre laser – normes ASL FFE",
   "start_url": "./index.html",
   "display": "standalone",
-  "orientation": "any",
+  "orientation": "portrait",
   "background_color": "#0d1117",
   "theme_color": "#0d1117",
   "lang": "fr",

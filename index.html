@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
-    <!-- ===== PWA ===== -->
+    <!-- PWA -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0d1117">
     <meta name="mobile-web-app-capable" content="yes">
@@ -14,12 +14,9 @@
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
-    <!-- =============== -->
 
     <link rel="stylesheet" type="text/css" href="style.css">
     <title>Répéteur ASL-FFE</title>
-
-    <!-- PeerJS CDN -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
@@ -27,7 +24,7 @@
 <div class="main-content">
     <div class="content">
 
-        <!-- SCORES + CARTONS -->
+        <!-- ═══ SCORES + CARTONS ═══ -->
         <div class="score-container">
             <div class="score-side">
                 <div class="score score_red" id="left_score">0</div>
@@ -49,58 +46,66 @@
             </div>
         </div>
 
-        <!-- BOUTONS POINTS -->
+        <!-- ═══ BOUTONS POINTS ═══ -->
         <div class="score-control-container">
-            <div class="score-side">
+            <div class="score-side points-section">
+                <div class="section-label">● Rouge — Points</div>
                 <div class="button-row">
-                    <button class="point-btn point-btn-a" data-player="left"  data-points="1">Zone A<br>(+1)</button>
-                    <button class="point-btn point-btn-b" data-player="left"  data-points="3">Zone B<br>(+3)</button>
-                    <button class="point-btn point-btn-c" data-player="left"  data-points="5">Zone C<br>(+5)</button>
+                    <button class="point-btn point-btn-a" data-player="left"  data-points="1">Zone A<br>+1</button>
+                    <button class="point-btn point-btn-b" data-player="left"  data-points="3">Zone B<br>+3</button>
+                    <button class="point-btn point-btn-c" data-player="left"  data-points="5">Zone C<br>+5</button>
                 </div>
             </div>
-            <div class="score-side">
+            <div class="score-side points-section">
+                <div class="section-label">● Vert — Points</div>
                 <div class="button-row">
-                    <button class="point-btn point-btn-a" data-player="right" data-points="1">Zone A<br>(+1)</button>
-                    <button class="point-btn point-btn-b" data-player="right" data-points="3">Zone B<br>(+3)</button>
-                    <button class="point-btn point-btn-c" data-player="right" data-points="5">Zone C<br>(+5)</button>
+                    <button class="point-btn point-btn-a" data-player="right" data-points="1">Zone A<br>+1</button>
+                    <button class="point-btn point-btn-b" data-player="right" data-points="3">Zone B<br>+3</button>
+                    <button class="point-btn point-btn-c" data-player="right" data-points="5">Zone C<br>+5</button>
                 </div>
             </div>
         </div>
 
-        <!-- CHRONO -->
+        <!-- ═══ CHRONO ═══ -->
         <div class="chrono-container">
             <div id="matchChrono" class="timer-display">03:00</div>
             <div id="chronoControls" class="button-row force-hide">
-                <button id="customTimeBtn"   class="timer-button">⏱ RÉGLER TEMPS</button>
-                <button id="quickTimer30s"   class="timer-button">30 SEC</button>
-                <button id="medicalBreakBtn" class="timer-button">⚕ PAUSE MED</button>
-                <button id="castBtn"         class="timer-button cast-btn"><span id="castStatus">📺 CAST TV</span></button>
+                <button id="customTimeBtn"   class="timer-button">⏱ TEMPS</button>
+                <button id="quickTimer30s"   class="timer-button">30 s</button>
+                <button id="medicalBreakBtn" class="timer-button">⚕ MED</button>
+                <button id="castBtn"         class="timer-button cast-btn"><span id="castStatus">📺 CAST</span></button>
             </div>
         </div>
 
-        <!-- FAUTES -->
+        <!-- ═══ SANCTIONS — zone visuellement séparée ═══ -->
         <div class="card-penalty-wrapper">
+            <div class="sanctions-header">
+                <span class="sanctions-title">⚠ Sanctions</span>
+                <span class="sanctions-warning">— appuyer avec intention —</span>
+            </div>
             <div class="fault-controls">
                 <div class="score-side">
-                    <div class="button-row fault-row-container">
-                        <button class="fault-btn card-button card-white"  data-player="left"  data-group="1">Faute Grp 1</button>
-                        <button class="fault-btn card-button card-yellow" data-player="left"  data-group="2">Faute Grp 2</button>
-                        <button class="fault-btn card-button card-red"    data-player="left"  data-group="3">Faute Grp 3</button>
-                        <button class="fault-btn card-button card-black"  data-player="left"  data-group="4">Faute Grp 4</button>
+                    <div class="fault-side-label rouge">● Rouge</div>
+                    <div class="fault-row-container">
+                        <button class="fault-btn card-button card-white"  data-player="left"  data-group="1">Grp 1</button>
+                        <button class="fault-btn card-button card-yellow" data-player="left"  data-group="2">Grp 2</button>
+                        <button class="fault-btn card-button card-red"    data-player="left"  data-group="3">Grp 3</button>
+                        <button class="fault-btn card-button card-black"  data-player="left"  data-group="4">Grp 4</button>
                     </div>
                 </div>
                 <div class="score-side">
-                    <div class="button-row fault-row-container">
-                        <button class="fault-btn card-button card-white"  data-player="right" data-group="1">Faute Grp 1</button>
-                        <button class="fault-btn card-button card-yellow" data-player="right" data-group="2">Faute Grp 2</button>
-                        <button class="fault-btn card-button card-red"    data-player="right" data-group="3">Faute Grp 3</button>
-                        <button class="fault-btn card-button card-black"  data-player="right" data-group="4">Faute Grp 4</button>
+                    <div class="fault-side-label vert">● Vert</div>
+                    <div class="fault-row-container">
+                        <button class="fault-btn card-button card-white"  data-player="right" data-group="1">Grp 1</button>
+                        <button class="fault-btn card-button card-yellow" data-player="right" data-group="2">Grp 2</button>
+                        <button class="fault-btn card-button card-red"    data-player="right" data-group="3">Grp 3</button>
+                        <button class="fault-btn card-button card-black"  data-player="right" data-group="4">Grp 4</button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- ANNULER -->
+        <!-- ═══ ANNULER ═══ -->
         <div class="card-buttons">
             <button id="undoBtn" class="card-button undo-btn">↩ Annuler dernière action</button>
         </div>
@@ -109,8 +114,8 @@
 
     <!-- START / RESET -->
     <div class="button-row">
-        <button id="resetBtn"        class="startStopButton" style="display:none; background-color:#ff004c; box-shadow:0 0 15px #ff004c;">RÉINITIALISER</button>
-        <button id="startStopButton" class="startStopButton" style="background-color:green;">START</button>
+        <button id="resetBtn"        class="startStopButton" style="display:none; background-color:#ff004c; box-shadow:0 0 18px rgba(255,0,76,0.5);">RESET</button>
+        <button id="startStopButton" class="startStopButton" style="background-color:#0cc346; box-shadow:0 0 18px rgba(12,195,70,0.4);">START</button>
     </div>
 
 </div><!-- /main-content -->
@@ -124,15 +129,14 @@
     </div>
 </div>
 
-<!-- Bannière d'installation PWA (affichée par JS si disponible) -->
+<!-- Bannière installation PWA -->
 <div id="pwaInstallBanner" style="display:none; position:fixed; bottom:0; left:0; right:0;
-     background:#161b22; border-top:2px solid #30363d; padding:14px 20px;
-     display:none; align-items:center; justify-content:space-between;
-     z-index:9999; gap:12px;">
+     background:#161b22; border-top:1px solid #30363d; padding:14px 20px;
+     align-items:center; justify-content:space-between; z-index:9999; gap:12px;">
     <div style="display:flex; align-items:center; gap:12px;">
-        <img src="icons/icon-72x72.png" width="44" height="44" style="border-radius:10px;" alt="ASL-FFE">
+        <img src="icons/icon-72x72.png" width="40" height="40" style="border-radius:10px;" alt="ASL-FFE">
         <div>
-            <div style="color:#c9d1d9; font-weight:bold; font-size:14px;">Installer l'appli ASL-FFE</div>
+            <div style="color:#c9d1d9; font-weight:bold; font-size:14px;">Installer ASL-FFE</div>
             <div style="color:#8b949e; font-size:12px;">Accès rapide depuis l'écran d'accueil</div>
         </div>
     </div>

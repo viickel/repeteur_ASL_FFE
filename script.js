@@ -102,25 +102,63 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function initPeerAsTV(code) {
-        peer = new Peer({ debug: 0 });
+        // ── ÉTAPE 1 : affiche l'interface TV IMMÉDIATEMENT ──────────────
+        // La TV a toujours un écran utile, même si PeerJS échoue (WebOS LG, etc.)
+        showTVMode();
+        updateTVStatus('connecting');
+
+        // ── ÉTAPE 2 : timeout global 10 s ───────────────────────────────
+        // Si WebRTC est bloqué (LG WebOS, vieux firmware) on informe l'utilisateur
+        const connectionTimeout = setTimeout(() => {
+            console.warn('[PeerJS] Timeout — WebRTC non supporté ou bloqué');
+            updateTVStatus('timeout');
+        }, 10000);
+
+        // ── ÉTAPE 3 : tentative PeerJS en arrière-plan ──────────────────
+        try {
+            peer = new Peer({ debug: 0 });
+        } catch(e) {
+            clearTimeout(connectionTimeout);
+            console.warn('[PeerJS] WebRTC non disponible:', e);
+            updateTVStatus('no-webrtc');
+            return;
+        }
 
         peer.on('open', () => {
             const conn = peer.connect(code, { reliable: true });
+
+            const peerConnTimeout = setTimeout(() => {
+                updateTVStatus('peer-timeout');
+            }, 8000);
+
             conn.on('open', () => {
-                console.log('TV connectée au contrôleur:', code);
-                showTVMode();
+                clearTimeout(connectionTimeout);
+                clearTimeout(peerConnTimeout);
+                console.log('[PeerJS] TV connectée au contrôleur:', code);
                 updateTVStatus('connected');
             });
             conn.on('data', (data) => {
                 if (data.type === 'state') renderTVState(data);
             });
             conn.on('close', () => updateTVStatus('disconnected'));
-            conn.on('error', () => updateTVStatus('error'));
+            conn.on('error', (e) => {
+                clearTimeout(connectionTimeout);
+                clearTimeout(peerConnTimeout);
+                console.warn('[PeerJS] Erreur connexion:', e);
+                updateTVStatus('error');
+            });
         });
 
         peer.on('error', (e) => {
-            console.warn('TV PeerJS error:', e);
-            updateTVStatus('error — code invalide ?');
+            clearTimeout(connectionTimeout);
+            console.warn('[PeerJS] Erreur peer:', e.type, e);
+            if (e.type === 'peer-unavailable') {
+                updateTVStatus('peer-unavailable');
+            } else if (e.type === 'network' || e.type === 'server-error') {
+                updateTVStatus('network-error');
+            } else {
+                updateTVStatus('error');
+            }
         });
     }
 
@@ -182,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
             #tv-chrono.running{border-color:#0cc346;color:#0cc346;}
             #tv-chrono.medical{border-color:#ff004c;color:#ff004c;animation:blink 1s infinite;}
             #tv-vs{font-size:1.4vw;color:#2a2a2a;letter-spacing:4px;}
-            #tv-conn{font-size:12px;padding:4px 10px;border-radius:20px;}
+            #tv-conn{font-size:12px;padding:4px 10px;border-radius:8px;line-height:1.5;text-align:right;max-width:300px;}
             @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
         </style>
         <div id="tv-bar">
@@ -221,12 +259,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const el = document.getElementById('tv-conn');
         if (!el) return;
         const map = {
-            connected:    { text: '✅ Connecté',   color: '#0cc346' },
-            disconnected: { text: '❌ Déconnecté', color: '#ff004c' },
-            error:        { text: '⚠️ Erreur',     color: '#ff004c' },
+            connecting:      { text: '⏳ Connexion en cours…',            color: '#e4a300' },
+            connected:       { text: '✅ Connecté',                       color: '#0cc346' },
+            disconnected:    { text: '❌ Déconnecté — tablette éteinte ?', color: '#ff004c' },
+            error:           { text: '⚠️ Erreur PeerJS',                  color: '#ff004c' },
+            timeout:         { text: '⏱ Timeout — WebRTC bloqué\nEssaie de recharger la page', color: '#ff004c' },
+            'no-webrtc':     { text: '🚫 WebRTC non supporté par ce navigateur TV', color: '#ff004c' },
+            'peer-unavailable': { text: '❓ Code introuvable — tablette prête ?', color: '#e4a300' },
+            'peer-timeout':  { text: '⏱ La tablette ne répond pas — code correct ?', color: '#e4a300' },
+            'network-error': { text: '🌐 Erreur réseau — même WiFi ?',    color: '#e4a300' },
         };
         const s = map[status];
-        if (s) { el.textContent = s.text; el.style.color = s.color; }
+        if (!s) return;
+        el.innerHTML = s.text.replace('\n', '<br>');
+        el.style.color = s.color;
     }
 
     function renderTVState(data) {
@@ -594,6 +640,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // ========= RACCOURCIS CLAVIER =========
     document.addEventListener('keydown', (e) => {
         if (e.repeat) return;
+        // Désactive les raccourcis quand un champ texte a le focus (ex: saisie code ASL-XXXX)
+        if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
         const key  = e.key.toLowerCase();
         const code = e.code;
         const noMod     = !e.shiftKey && !e.ctrlKey && !e.altKey;
