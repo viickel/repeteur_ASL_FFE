@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-
-    <!-- PWA -->
+ngrok http 3000
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0d1117">
     <meta name="mobile-web-app-capable" content="yes">
@@ -17,17 +16,19 @@
 
     <link rel="stylesheet" type="text/css" href="style.css">
     <title>Répéteur ASL-FFE</title>
+    
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
 <div class="main-content">
     <div class="content">
 
-        <!-- ═══ SCORES + CARTONS ═══ -->
         <div class="score-container">
             <div class="score-side">
-                <div class="score score_red" id="left_score">0</div>
+                <input type="text" id="leftName" class="fighter-name-input red-text" placeholder="ROUGE" maxlength="15">
+                <div id="scoreLeft" class="score score_red" onclick="adjustScore('left', 1)" oncontextmenu="adjustScore('left', -1); return false;">0</div>
                 <div class="card-count-row">
                     <div class="card-counter"><span class="card-display card-white"  id="left_card_white">0</span></div>
                     <div class="card-counter"><span class="card-display card-yellow" id="left_card_yellow">0</span></div>
@@ -36,7 +37,8 @@
                 </div>
             </div>
             <div class="score-side">
-                <div class="score score_green" id="right_score">0</div>
+                <input type="text" id="rightName" class="fighter-name-input green-text" placeholder="VERT" maxlength="15">
+                <div id="scoreRight" class="score score_green" onclick="adjustScore('right', 1)" oncontextmenu="adjustScore('right', -1); return false;">0</div>
                 <div class="card-count-row">
                     <div class="card-counter"><span class="card-display card-white"  id="right_card_white">0</span></div>
                     <div class="card-counter"><span class="card-display card-yellow" id="right_card_yellow">0</span></div>
@@ -46,7 +48,6 @@
             </div>
         </div>
 
-        <!-- ═══ BOUTONS POINTS ═══ -->
         <div class="score-control-container">
             <div class="score-side points-section">
                 <div class="section-label">● Rouge — Points</div>
@@ -66,7 +67,6 @@
             </div>
         </div>
 
-        <!-- ═══ CHRONO ═══ -->
         <div class="chrono-container">
             <div id="matchChrono" class="timer-display">03:00</div>
             <div id="chronoControls" class="button-row force-hide">
@@ -77,7 +77,6 @@
             </div>
         </div>
 
-        <!-- ═══ SANCTIONS — zone visuellement séparée ═══ -->
         <div class="card-penalty-wrapper">
             <div class="sanctions-header">
                 <span class="sanctions-title">⚠ Sanctions</span>
@@ -105,23 +104,16 @@
             </div>
         </div>
 
-        <!-- ═══ ANNULER ═══ -->
         <div class="card-buttons">
             <button id="undoBtn" class="card-button undo-btn">↩ Annuler dernière action</button>
         </div>
 
-    </div><!-- /content -->
-
-    <!-- START / RESET -->
-    <div class="button-row">
+    </div><div class="button-row">
         <button id="resetBtn"        class="startStopButton" style="display:none; background-color:#ff004c; box-shadow:0 0 18px rgba(255,0,76,0.5);">RESET</button>
         <button id="startStopButton" class="startStopButton" style="background-color:#0cc346; box-shadow:0 0 18px rgba(12,195,70,0.4);">START</button>
     </div>
 
-</div><!-- /main-content -->
-
-<!-- PAUSE MÉDICALE -->
-<div id="medicalOverlay" class="hidden">
+</div><div id="medicalOverlay" class="hidden">
     <div id="medicalModal">
         <h1>⚕ PAUSE MÉDICALE</h1>
         <div id="medicalChrono">05:00</div>
@@ -129,7 +121,48 @@
     </div>
 </div>
 
-<!-- Bannière installation PWA -->
+<div id="resetModal" class="hidden full-screen-overlay" style="position:fixed; top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);display:flex;align-items:center;justify-content:center;z-index:4000;">
+    <div class="modal-content" style="padding:20px; border-radius:10px; text-align:center; max-width:400px; width:90%; background:#161b22; border: 2px solid #30363d;">
+        
+        <div id="matchCard" class="match-card">
+            <h2 style="margin-top:0; font-size:14px; color:#8b949e; letter-spacing:2px;">FICHE DE COMBAT</h2>
+            <div class="match-card-scores" style="display:flex; justify-content:center; align-items:center; gap:20px; padding:20px 0;">
+                
+                <!-- Sabre Rouge (Gauche) -->
+                <div class="mc-side mc-red">
+                   <div class="css-saber">
+                    <div class="saber-blade blade-red"></div>
+                    <div class="saber-hilt"></div>
+                </div>
+                    <span id="mcLeftName">ROUGE</span>
+                    <span id="mcLeftScore">0</span>
+                </div>
+
+                <div class="mc-vs">VS</div>
+
+                <!-- Sabre Vert (Droite) -->
+                <div class="mc-side mc-green">
+                    <div class="css-saber">
+                    <div class="saber-blade blade-green"></div>
+                    <div class="saber-hilt"></div>
+                </div>
+                    <span id="mcRightName">VERT</span>
+                    <span id="mcRightScore">0</span>
+                </div>
+            </div>
+            <div class="mc-footer">https://viickel.github.io/repeteur_ASL_FFE/</div>
+        </div>
+
+        <button id="shareCardBtn" class="modal-button share-btn" style="padding:15px; font-size:16px; width:100%; margin-bottom:20px; background:#007bff; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; box-shadow: 0 0 15px rgba(0,123,255,0.4);">📸 Partager / Télécharger l'image</button>
+        
+        <p style="margin-bottom:20px; font-size:16px; color:#c9d1d9;">Réinitialiser et démarrer un nouveau match ?</p>
+        <div style="display:flex; justify-content:space-around; gap:10px;">
+            <button id="yesResetBtn" class="modal-button" style="padding:15px; flex:1; font-size:18px; background:var(--laser-green); color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">OUI (Nouveau Match)</button>
+            <button id="noResetBtn" class="modal-button" style="padding:15px; flex:1; font-size:18px; background:var(--border); color:#c9d1d9; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">NON (Annuler)</button>
+        </div>
+    </div>
+</div>
+
 <div id="pwaInstallBanner" style="display:none; position:fixed; bottom:0; left:0; right:0;
      background:#161b22; border-top:1px solid #30363d; padding:14px 20px;
      align-items:center; justify-content:space-between; z-index:9999; gap:12px;">
@@ -147,5 +180,25 @@
 </div>
 
 <script src="script.js"></script>
+
+
+<!-- Popup Temps Personnalisé -->
+<div id="timeModal" class="hidden full-screen-overlay" style="position:fixed; top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:5000;">
+    <div style="background:#161b22; padding:25px; border-radius:15px; border:2px solid #30363d; text-align:center; width:90%; max-width:300px;">
+        <h2 style="color:#c9d1d9; margin-bottom:20px;">Temps de combat</h2>
+        <div style="display:flex; justify-content:center; gap:10px; margin-bottom:20px;">
+            <input type="number" id="inputMin" value="03" min="0" max="99" style="width:60px; padding:10px; font-size:20px; text-align:center; background:#0d1117; border:1px solid #30363d; color:white; border-radius:8px;">
+            <span style="font-size:20px; color:#555; align-self:center;">:</span>
+            <input type="number" id="inputSec" value="00" min="0" max="59" style="width:60px; padding:10px; font-size:20px; text-align:center; background:#0d1117; border:1px solid #30363d; color:white; border-radius:8px;">
+        </div>
+        <button id="confirmTimeBtn" style="width:100%; padding:15px; background:#007bff; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">VALIDER</button>
+    </div>
+</div>
+
+
+
+
+
+
 </body>
 </html>

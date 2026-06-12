@@ -561,3 +561,94 @@ html, body {
     .sanctions-warning { display: none; }
     .fault-side-label { font-size: 8px; padding: 2px 0; margin-bottom: 3px; }
 }
+
+/* ==========================================================================
+   13. Gamification - Noms & Match Card
+   ========================================================================== */
+.fighter-name-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    text-align: center;
+    font-size: clamp(16px, 4vw, 24px);
+    font-weight: 900;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    transition: all 0.3s;
+}
+.fighter-name-input:focus {
+    outline: none;
+    border-bottom: 2px solid var(--text);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+.red-text { color: var(--laser-red); }
+.green-text { color: var(--laser-green); }
+
+.match-card {
+    background: linear-gradient(135deg, #161b22, #050505);
+    border: 2px solid #30363d;
+    border-radius: 12px;
+    padding: 25px 15px;
+    margin-bottom: 20px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+.match-card::before {
+    content: ""; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+    background: radial-gradient(circle, rgba(0,123,255,0.1) 0%, transparent 60%);
+    z-index: 0; pointer-events: none;
+}
+.match-card-scores {
+    display: flex; justify-content: center; align-items: center; gap: 15px; position: relative; z-index: 1;
+}
+.mc-side { display: flex; flex-direction: column; width: 40%; }
+.mc-side span:first-child { font-size: 14px; color: #c9d1d9; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight:bold; }
+.mc-side span:last-child { font-size: 55px; font-weight: 900; font-family: 'Courier New', monospace; line-height: 1; margin-top: 5px; }
+.mc-red span:last-child { color: var(--laser-red); text-shadow: 0 0 15px rgba(255,0,76,0.5); }
+.mc-green span:last-child { color: var(--laser-green); text-shadow: 0 0 15px rgba(12,195,70,0.5); }
+.mc-vs { font-size: 20px; font-weight: bold; color: #555; position: relative; z-index: 1; }
+.mc-footer { margin-top: 20px; font-size: 10px; color: #555; position: relative; z-index: 1; text-transform: uppercase; letter-spacing: 2px; }
+
+/* ==========================================================================
+   Sabres Laser CSS (Compatibles html2canvas)
+   ========================================================================== */
+.css-saber {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 auto 10px auto;
+    height: 100px; /* Hauteur totale du sabre */
+    justify-content: flex-end;
+}
+
+.saber-blade {
+    width: 6px;
+    height: 75px;
+    border-radius: 4px 4px 0 0;
+    margin-bottom: -2px; /* Pour que la lame rentre un peu dans le manche */
+    z-index: 1;
+}
+
+.blade-red {
+    background-color: #ff004c;
+    box-shadow: 0 0 8px #ff004c, 0 0 15px #ff004c;
+}
+
+.blade-green {
+    background-color: #0cc346;
+    box-shadow: 0 0 8px #0cc346, 0 0 15px #0cc346;
+}
+
+.saber-hilt {
+    width: 10px;
+    height: 25px;
+    background-color: #555;
+    border-radius: 2px;
+    border: 1px solid #111;
+    z-index: 2;
+}
+
+
