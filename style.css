@@ -518,7 +518,7 @@ html, body {
     .content {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        grid-template-rows: auto auto 1fr auto auto;
+        grid-template-rows: auto auto auto auto auto;
         gap: 5px;
         align-items: start;
     }
@@ -530,15 +530,15 @@ html, body {
     .chrono-container        { grid-column: 1 / 3; grid-row: 2; }
 
     /* Ligne 3 gauche : Points Rouge + Vert */
-    .score-control-container { grid-column: 1; grid-row: 3; }
+    .score-control-container { grid-column: 1; grid-row: 3; align-self: start; }
 
-    /* Ligne 3 droite : Sanctions */
-    .card-penalty-wrapper    { grid-column: 2; grid-row: 3; }
+    /* Ligne 4 gauche : Annuler — sous les points */
+    .card-buttons            { grid-column: 1; grid-row: 4; align-self: stretch; }
 
-    /* Ligne 4 : Annuler — pleine largeur (c'est .card-buttons le conteneur, pas .undo-btn) */
-    .card-buttons            { grid-column: 1 / 3; grid-row: 4; }
+    /* Lignes 3+4 droite : Sanctions — s'étend sur les 2 lignes pour remplir */
+    .card-penalty-wrapper    { grid-column: 2; grid-row: 3 / 5; align-self: stretch; }
 
-    /* Ligne 5 : START — pleine largeur */
+    /* START — pleine largeur, ligne 5 */
     .button-row:last-child   { grid-column: 1 / 3; grid-row: 5; }
 
 
