@@ -200,24 +200,24 @@ document.addEventListener('DOMContentLoaded', () => {
         <style>
             *{margin:0;padding:0;box-sizing:border-box;}
             body{background:#0a0d12;font-family:'Courier New',monospace;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
-            #tv-bar{background:#111;padding:6px 20px;font-size:13px;color:#444;display:flex;justify-content:space-between;align-items:center;}
+            #tv-bar{background:#111;padding:6px 20px;font-size:10px;color:#444;display:flex;justify-content:space-between;align-items:center;}
             #tv-main{flex:1;display:flex;align-items:center;justify-content:center;}
             .tv-side{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:20px;}
             .tv-side-l{border-right:2px solid #1a1a2e;}
             .tv-side-r{border-left:2px solid #1a1a2e;}
-            .tv-label{font-size:2vw;letter-spacing:6px;font-weight:bold;margin-bottom:10px;text-transform:uppercase;}
-            .tv-score{font-size:30vw;font-weight:900;line-height:.85;font-variant-numeric:tabular-nums;}
+            .tv-label{font-size:2vw;letter-spacing:6px;font-weight:bold;margin-bottom:9px;text-transform:uppercase;}
+            .tv-score{font-size:25vw;font-weight:900;line-height:.85;font-variant-numeric:tabular-nums;}
             .tv-lc{color:#ff004c;text-shadow:0 0 50px rgba(255,0,76,.5);}
             .tv-rc{color:#0cc346;text-shadow:0 0 50px rgba(12,195,70,.5);}
-            .tv-cards{display:flex;gap:8px;margin-top:18px;min-height:52px;align-items:center;}
-            .tv-card{width:34px;height:48px;border-radius:5px;border:1px solid rgba(255,255,255,.15);box-shadow:0 2px 8px rgba(0,0,0,.5);}
+            .tv-cards{display:flex;gap:11px;margin-top:18px;min-height:52px;align-items:center;}
+            .tv-card{width:50px;height:70px;border-radius:8px;border:3px solid rgba(255,255,255,.15);box-shadow:0 2px 8px rgba(0,0,0,.5);}
             .tv-card-white{background:#f0f6fc;}
             .tv-card-yellow{background:#e4c700;}
             .tv-card-red{background:#ff004c;}
             .tv-card-black{background:#111;border-color:#555;}
             #tv-center{width:200px;display:flex;flex-direction:column;align-items:center;gap:14px;flex-shrink:0;}
-            #tv-chrono{font-size:5.5vw;font-weight:bold;color:#c9d1d9;letter-spacing:4px;padding:12px 20px;border:2px solid #222;border-radius:12px;background:#111;min-width:170px;text-align:center;transition:color .3s,border-color .3s;}
-            #tv-chrono.running{border-color:#0cc346;color:#0cc346;}
+            #tv-chrono{font-size:7vw;font-weight:bold;color:#c9d1d9;letter-spacing:4px;padding:12px 20px;border:2px solid #222;border-radius:12px;background:#111;min-width:170px;text-align:center;transition:color .3s,border-color .3s;}
+            #tv-chrono.running{border-color:#007bff;color:#007bff;}
             #tv-chrono.medical{border-color:#ff004c;color:#ff004c;animation:blink 1s infinite;}
             #tv-vs{font-size:1.4vw;color:#2a2a2a;letter-spacing:4px;}
             #tv-conn{font-size:12px;padding:4px 10px;border-radius:8px;line-height:1.5;text-align:right;max-width:300px;}

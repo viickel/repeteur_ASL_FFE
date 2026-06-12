@@ -2,10 +2,10 @@
 
 pkgs.mkShell {
   buildInputs = with pkgs; [
-    nodejs_20
+    nodejs_22
     git
     # 'serve' est une alternative moderne et maintenue
-    nodePackages.serve
+    serve
   ];
 
   shellHook = ''
