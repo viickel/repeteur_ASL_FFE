@@ -46,6 +46,38 @@ Pour projeter le score sur un écran distant :
 
  - Synchronisation : Une fois connecté, les scores, le chrono et les cartons se mettent à jour en temps réel sur la TV.
 
+
+ ## ⌨️ Racourci clavier
+Il est possible de piloter l'application avec des raccourci clavier, voici la liste des racourci : 
+ 
+ 
+ ### Points — Combattant Rouge (gauche)
+A ou Q → +1 pt (Zone A)
+Z ou W → +3 pts (Zone B)
+E → +5 pts (Zone C)
+
+### Points — Combattant Vert (droite)
+Shift + A/Q → +1 pt
+Shift + Z/W → +3 pts
+Shift + E → +5 pts
+
+### Cartons — Combattant Rouge (gauche)
+B → Faute Groupe 1
+J → Faute Groupe 2
+R → Faute Groupe 3
+N → Faute Groupe 4
+
+### Cartons — Combattant Vert (droite)
+Alt + B → Faute Groupe 1
+Alt + J → Faute Groupe 2
+Alt + R → Faute Groupe 3
+Alt + N → Faute Groupe 4
+
+### Commandes globales
+Espace → Start / Pause chrono
+Ctrl + Z → Annuler dernière action
+F5 → Réinitialiser le match
+
 ## 🤝 Contribution
 
 Les contributions sont les bienvenues ! Si vous avez des suggestions de fonctionnalités, des corrections de bugs, ou des idées pour améliorer le design, n'hésitez pas à ouvrir une *issue* ou soumettre une *pull request*.
