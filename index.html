@@ -67,12 +67,17 @@
         </div>
 
         <div class="chrono-container">
+            <div id="teamTouchesDisplay" class="hidden" style="color:#e4c700; font-weight:bold; font-size:14px; text-align:center; margin-bottom:5px; letter-spacing:1px;">
+                Touches validées : <span id="teamTouchesCount">0</span> / 5
+            </div>
+            
             <div id="matchChrono" class="timer-display">03:00</div>
             <div id="chronoControls" class="button-row force-hide">
                 <button id="customTimeBtn"   class="timer-button">⏱ TEMPS</button>
                 <button id="quickTimer30s"   class="timer-button">30 s</button>
                 <button id="medicalBreakBtn" class="timer-button">⚕ MED</button>
                 <button id="castBtn"         class="timer-button cast-btn"><span id="castStatus">📺 CAST</span></button>
+                <button id="teamModeBtn"     class="timer-button" style="border-color:#007bff; color:#007bff;">👥 ÉQUIPE</button>
             </div>
         </div>
 
@@ -177,6 +182,20 @@
         <button id="pwaDismissBtn" style="background:transparent; color:#8b949e; border:1px solid #30363d; border-radius:8px; padding:8px 12px; cursor:pointer; font-size:13px;">✕</button>
     </div>
 </div>
+
+
+<div id="relayOverlay" class="hidden full-screen-overlay" style="position:fixed; top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);display:flex;align-items:center;justify-content:center;z-index:4500;">
+    <div style="background:#161b22; padding:30px; border-radius:15px; border:2px solid #007bff; text-align:center; max-width:400px; width:90%;">
+        <h1 style="color:#c9d1d9; margin-top:0; font-size:24px;">FIN DU RELAIS</h1>
+        <p style="color:#8b949e; margin-bottom:20px; font-size:14px;">5 touches atteintes ou temps écoulé. Temps de réflexion et changement de combattant.</p>
+        
+        <div id="relayTimer" style="font-size:4em; font-weight:900; color:#e4c700; margin-bottom:20px; font-variant-numeric:tabular-nums;">01:00</div>
+        
+        <button id="nextRelayBtn" style="width:100%; padding:15px; background:#0cc346; color:white; border:none; border-radius:8px; font-size:18px; font-weight:bold; cursor:pointer;">DÉMARRER LE MATCH SUIVANT</button>
+    </div>
+</div>
+
+
 
 <script src="script.js"></script>
 

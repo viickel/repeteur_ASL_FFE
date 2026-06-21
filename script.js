@@ -8,6 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentMatchScoreLeft = 0;
     let currentMatchScoreRight = 0;
     let medicalTimerId;
+    //========= Variable pour le mode équipe =========
+    let isTeamMode = false;
+    let relayTouches = 0;
+    let relayPauseTimerId;
 
     const scoreHistory = [];
     const MAX_HISTORY_SIZE = 30;
@@ -306,7 +310,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function saveStateToHistory() {
         if (scoreHistory.length >= MAX_HISTORY_SIZE) scoreHistory.shift();
-        scoreHistory.push({ left: currentMatchScoreLeft, right: currentMatchScoreRight, penalties: JSON.parse(JSON.stringify(penalties)) });
+        scoreHistory.push({ 
+            left: currentMatchScoreLeft, 
+            right: currentMatchScoreRight, 
+            penalties: JSON.parse(JSON.stringify(penalties)),
+            touches: relayTouches // Sauvegarde des touches
+        });
     }
 
     function updateCardDisplay() {
@@ -336,8 +345,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const prev = scoreHistory.pop();
         currentMatchScoreLeft = prev.left; currentMatchScoreRight = prev.right;
         penalties.left = { ...prev.penalties.left }; penalties.right = { ...prev.penalties.right };
+        relayTouches = prev.touches || 0; // Restauration des touches
         leftScoreDisplay.textContent = currentMatchScoreLeft; rightScoreDisplay.textContent = currentMatchScoreRight;
-        updateCardDisplay(); broadcastState();
+        updateCardDisplay(); updateRelayUI(); broadcastState();
     }
 
     function setMatchTime(seconds) {
@@ -354,8 +364,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateTimer() {
-        if (matchTimeInSeconds > 0) { matchTimeInSeconds--; matchChronoDisplay.textContent = formatTime(matchTimeInSeconds); broadcastState(); } 
-        else { clearInterval(timerId); isTimerRunning = false; matchChronoDisplay.textContent = '00:00'; startStopButton.textContent = 'FIN DU MATCH'; startStopButton.style.backgroundColor = 'gray'; resetBtn.style.display = 'block'; broadcastState(); }
+        if (matchTimeInSeconds > 0) { 
+            matchTimeInSeconds--; 
+            matchChronoDisplay.textContent = formatTime(matchTimeInSeconds); 
+            broadcastState(); 
+        } else { 
+            clearInterval(timerId); 
+            isTimerRunning = false; 
+            matchChronoDisplay.textContent = '00:00'; 
+            
+            if (isTeamMode) {
+                triggerRelayPause(); // Fin du temps = Fin du relais 
+            } else {
+                startStopButton.textContent = 'FIN DU MATCH'; 
+                startStopButton.style.backgroundColor = 'gray'; 
+                resetBtn.style.display = 'block'; 
+            }
+            broadcastState(); 
+        }
     }
 
     // ========= GAMIFICATION : RESET MODAL & PARTAGE =========
@@ -404,6 +430,78 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } catch (err) { console.error(err); alert("Erreur d'image"); shareCardBtn.innerHTML = originalText; shareCardBtn.disabled = false; }
     });
+
+
+
+
+// ========= MODE ÉQUIPE =========
+    const teamModeBtn = document.getElementById('teamModeBtn');
+    const teamTouchesDisplay = document.getElementById('teamTouchesDisplay');
+    const teamTouchesCount = document.getElementById('teamTouchesCount');
+    const relayOverlay = document.getElementById('relayOverlay');
+    const relayTimerDisplay = document.getElementById('relayTimer');
+    const nextRelayBtn = document.getElementById('nextRelayBtn');
+
+    teamModeBtn.addEventListener('click', () => {
+        isTeamMode = !isTeamMode;
+        teamModeBtn.style.backgroundColor = isTeamMode ? '#007bff' : 'transparent';
+        teamModeBtn.style.color = isTeamMode ? 'white' : '#007bff';
+        if(isTeamMode) {
+            teamTouchesDisplay.classList.remove('hidden');
+            relayTouches = 0;
+            updateRelayUI();
+        } else {
+            teamTouchesDisplay.classList.add('hidden');
+        }
+    });
+
+    function updateRelayUI() {
+        if(teamTouchesCount) teamTouchesCount.textContent = relayTouches;
+    }
+
+    // Fonction centralisée pour marquer un point et compter la touche
+    function handlePointScored(player, points) {
+        saveStateToHistory();
+        applyScore(player, points);
+        
+        if (isTeamMode) {
+            relayTouches++;
+            updateRelayUI();
+            // Le relais s'arrête à 5 touches maximum 
+            if (relayTouches >= 5) {
+                setTimeout(triggerRelayPause, 200); // Léger délai pour voir le score monter
+            }
+        }
+        broadcastState();
+    }
+
+    function triggerRelayPause() {
+        // Met le chrono principal en pause
+        if (isTimerRunning) { clearInterval(timerId); isTimerRunning = false; startStopButton.textContent = 'START'; startStopButton.style.backgroundColor = 'green'; }
+        
+        relayOverlay.classList.remove('hidden');
+        let t = 60; // 1 minute de réflexion [cite: 27]
+        relayTimerDisplay.textContent = formatTime(t);
+        
+        relayPauseTimerId = setInterval(() => {
+            t--;
+            relayTimerDisplay.textContent = formatTime(t);
+            if (t <= 0) {
+                clearInterval(relayPauseTimerId);
+                // Optionnel : Ajouter un son ici
+            }
+        }, 1000);
+    }
+
+    nextRelayBtn.addEventListener('click', () => {
+        clearInterval(relayPauseTimerId);
+        relayOverlay.classList.add('hidden');
+        relayTouches = 0;
+        updateRelayUI();
+        setMatchTime(180); // Repart sur 3 minutes max pour le combat suivant 
+        // Les scores globaux (A, B, C) restent intacts pour le cumul des 9 matchs !
+    });
+
 
     // ========= ÉVÉNEMENTS =========
     function determineCardAndPoints(player, group) {
@@ -488,13 +586,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-
-
     document.getElementById('medicalBreakBtn').addEventListener('click', startMedicalBreak);
     if (castBtn) castBtn.addEventListener('click', showCastModal);
     matchChronoDisplay.addEventListener('click', () => chronoControls.classList.toggle('force-hide'));
 
-    pointButtons.forEach(btn => btn.addEventListener('click', () => { saveStateToHistory(); applyScore(btn.dataset.player, parseInt(btn.dataset.points, 10)); broadcastState(); }));
+    pointButtons.forEach(btn => btn.addEventListener('click', () => { 
+        handlePointScored(btn.dataset.player, parseInt(btn.dataset.points, 10)); 
+    }));
     faultButtons.forEach(btn => btn.addEventListener('click', () => { const s = determineCardAndPoints(btn.dataset.player, parseInt(btn.dataset.group, 10)); if (s.endsMatch) handleElimination(btn.dataset.player); }));
 
     document.addEventListener('keydown', (e) => {
@@ -508,6 +606,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (key===' ') { e.preventDefault(); startStopTimer(); }
         if (key==='z' && e.ctrlKey) { e.preventDefault(); undoLastAction(); }
         if (e.key==='F5') { e.preventDefault(); showResetModal(); }
+        if (code in pm) { 
+        if (noMod) { e.preventDefault(); handlePointScored('left', pm[code]); return; } 
+        if (shiftOnly) { e.preventDefault(); handlePointScored('right', pm[code]); return; } 
+    }
     });
 
     updateCardDisplay();
