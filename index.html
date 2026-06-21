@@ -33,6 +33,9 @@
                     <div class="card-counter"><span class="card-display card-yellow" id="left_card_yellow">0</span></div>
                     <div class="card-counter"><span class="card-display card-red"    id="left_card_red">0</span></div>
                     <div class="card-counter"><span class="card-display card-black"  id="left_card_black">0</span></div>
+                    <div class="card-counter team-E-ui hidden" style="margin-left: 8px; border-left: 1px dashed #30363d; padding-left: 8px;">
+                        <span class="card-display" id="left_card_E" style="background: #21262d; color: #e4c700; border: 1px solid #e4c700; font-size: 11px;">E:0</span>
+                     </div>
                 </div>
             </div>
             <div class="score-side">
@@ -43,6 +46,9 @@
                     <div class="card-counter"><span class="card-display card-yellow" id="right_card_yellow">0</span></div>
                     <div class="card-counter"><span class="card-display card-red"    id="right_card_red">0</span></div>
                     <div class="card-counter"><span class="card-display card-black"  id="right_card_black">0</span></div>
+                    <div class="card-counter team-E-ui hidden" style="margin-left: 8px; border-left: 1px dashed #30363d; padding-left: 8px;">
+                        <span class="card-display" id="right_card_E" style="background: #21262d; color: #e4c700; border: 1px solid #e4c700; font-size: 11px;">E:0</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -86,28 +92,46 @@
                 <span class="sanctions-title">⚠ Sanctions</span>
                 <span class="sanctions-warning">— appuyer avec intention —</span>
             </div>
+           
+            
             <div class="fault-controls">
-                <div class="score-side">
-                    <div class="fault-side-label rouge">● Rouge</div>
-                    <div class="fault-row-container">
-                        <button class="fault-btn card-button card-white"  data-player="left"  data-group="1">Grp 1</button>
-                        <button class="fault-btn card-button card-yellow" data-player="left"  data-group="2">Grp 2</button>
-                        <button class="fault-btn card-button card-red"    data-player="left"  data-group="3">Grp 3</button>
-                        <button class="fault-btn card-button card-black"  data-player="left"  data-group="4">Grp 4</button>
-                    </div>
+    
+            <!-- CÔTÉ ROUGE -->
+            <div class="score-side">
+                <div class="fault-side-label rouge">● Rouge</div>
+                <div class="fault-row-container">
+                    <button class="fault-btn card-button card-white"  data-player="left"  data-group="1">Grp 1</button>
+                    <button class="fault-btn card-button card-yellow" data-player="left"  data-group="2">Grp 2</button>
+                    <button class="fault-btn card-button card-red"    data-player="left"  data-group="3">Grp 3</button>
+                    <button class="fault-btn card-button card-black"  data-player="left"  data-group="4">Grp 4</button>
                 </div>
-                <div class="score-side">
-                    <div class="fault-side-label vert">● Vert</div>
-                    <div class="fault-row-container">
-                        <button class="fault-btn card-button card-white"  data-player="right" data-group="1">Grp 1</button>
-                        <button class="fault-btn card-button card-yellow" data-player="right" data-group="2">Grp 2</button>
-                        <button class="fault-btn card-button card-red"    data-player="right" data-group="3">Grp 3</button>
-                        <button class="fault-btn card-button card-black"  data-player="right" data-group="4">Grp 4</button>
-                    </div>
+                <!-- Boutons Équipe E (Rouge) -->
+                <div class="fault-row-container team-E-ui hidden" style="margin-top: 5px;">
+                    <button class="fault-btn card-button card-white team-E-btn"  data-player="left" data-type="white">Blanc E</button>
+                    <button class="fault-btn card-button card-yellow team-E-btn" data-player="left" data-type="yellow">Jaune E</button>
                 </div>
             </div>
+            
+            <!-- CÔTÉ VERT -->
+            <div class="score-side">
+                <div class="fault-side-label vert">● Vert</div>
+                <div class="fault-row-container">
+                    <button class="fault-btn card-button card-white"  data-player="right" data-group="1">Grp 1</button>
+                    <button class="fault-btn card-button card-yellow" data-player="right" data-group="2">Grp 2</button>
+                    <button class="fault-btn card-button card-red"    data-player="right" data-group="3">Grp 3</button>
+                    <button class="fault-btn card-button card-black"  data-player="right" data-group="4">Grp 4</button>
+                </div>
+                <!-- Boutons Équipe E (Vert) -->
+                <div class="fault-row-container team-E-ui hidden" style="margin-top: 5px;">
+                    <button class="fault-btn card-button card-white team-E-btn"  data-player="right" data-type="white">Blanc E</button>
+                    <button class="fault-btn card-button card-yellow team-E-btn" data-player="right" data-type="yellow">Jaune E</button>
+                </div>
+            </div>
+            
         </div>
 
+
+            
         <div class="card-buttons">
             <button id="undoBtn" class="card-button undo-btn">↩ Annuler dernière action</button>
         </div>

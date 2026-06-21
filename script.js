@@ -13,12 +13,18 @@ document.addEventListener('DOMContentLoaded', () => {
     let relayTouches = 0;
     let relayPauseTimerId;
 
+
     const scoreHistory = [];
     const MAX_HISTORY_SIZE = 30;
 
     const penalties = {
         left:  { group1: 0, group2: 0, group3: 0, group4: 0 },
         right: { group1: 0, group2: 0, group3: 0, group4: 0 }
+    };
+
+    const teamPenaltiesE = {
+        left: { white: 0, yellow: 0 },
+        right: { white: 0, yellow: 0 }
     };
 
     // ========= SÉLECTION DOM =========
@@ -142,7 +148,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 medical: isMedicalBreak,
                 penalties: JSON.parse(JSON.stringify(penalties)),
                 leftName: leftNameInput ? leftNameInput.value.trim() : 'ROUGE',
-                rightName: rightNameInput ? rightNameInput.value.trim() : 'VERT'
+                rightName: rightNameInput ? rightNameInput.value.trim() : 'VERT',
+                teamPenaltiesE: teamPenaltiesE
             });
         } catch(e) { console.warn('broadcast error:', e); }
     }
@@ -167,56 +174,70 @@ document.addEventListener('DOMContentLoaded', () => {
     function showTVMode() {
         document.body.innerHTML = `
         <style>
-            *{margin:0;padding:0;box-sizing:border-box;}
-            body{background:#0a0d12;font-family:'Courier New',monospace;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
-            #tv-bar{background:#111;padding:6px 20px;font-size:10px;color:#444;display:flex;justify-content:space-between;align-items:center;}
-            #tv-main{flex:1;display:flex;align-items:center;justify-content:center;}
-            .tv-side{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:20px;}
-            .tv-side-l{border-right:2px solid #1a1a2e;}
-            .tv-side-r{border-left:2px solid #1a1a2e;}
-            .tv-label{font-size:3vw;letter-spacing:4px;font-weight:bold;margin-bottom:9px;text-transform:uppercase; font-family:'Segoe UI', sans-serif;}
-            .tv-score{font-size:25vw;font-weight:900;line-height:.85;font-variant-numeric:tabular-nums;}
-            .tv-lc{color:#ff004c;text-shadow:0 0 50px rgba(255,0,76,.5);}
-            .tv-rc{color:#0cc346;text-shadow:0 0 50px rgba(12,195,70,.5);}
-            .tv-cards{display:flex;gap:11px;margin-top:18px;min-height:52px;align-items:center;}
-            .tv-card{width:50px;height:70px;border-radius:8px;border:3px solid rgba(255,255,255,.15);box-shadow:0 2px 8px rgba(0,0,0,.5);}
-            .tv-card-white{background:#f0f6fc;}
-            .tv-card-yellow{background:#e4c700;}
-            .tv-card-red{background:#ff004c;}
-            .tv-card-black{background:#111;border-color:#555;}
-            #tv-center{width:200px;display:flex;flex-direction:column;align-items:center;gap:14px;flex-shrink:0;}
-            #tv-chrono{font-size:7vw;font-weight:bold;color:#c9d1d9;letter-spacing:4px;padding:12px 20px;border:2px solid #222;border-radius:12px;background:#111;min-width:170px;text-align:center;transition:color .3s,border-color .3s;}
-            #tv-chrono.running{border-color:#007bff;color:#007bff;}
-            #tv-chrono.medical{border-color:#ff004c;color:#ff004c;animation:blink 1s infinite;}
-            #tv-vs{font-size:1.4vw;color:#2a2a2a;letter-spacing:4px;}
-            #tv-conn{font-size:12px;padding:4px 10px;border-radius:8px;line-height:1.5;text-align:right;max-width:300px;}
-            @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-        </style>
-        <div id="tv-bar">
-            <span style="display:flex;align-items:center;gap:8px;">
-                <img src="icons/icon-72x72.png" width="24" height="24" style="border-radius:5px;" onerror="this.style.display='none'">
-                ASL-FFE — Répéteur
-            </span>
-            <span id="tv-conn" style="color:#e4a300">⏳ En attente...</span>
-            <span id="tv-clock"></span>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{background:#0a0d12;font-family:'Courier New',monospace;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+        #tv-bar{background:#111;padding:6px 20px;font-size:10px;color:#444;display:flex;justify-content:space-between;align-items:center;}
+        #tv-main{flex:1;display:flex;align-items:center;justify-content:center;}
+        .tv-side{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:20px;}
+        .tv-side-l{border-right:2px solid #1a1a2e;}
+        .tv-side-r{border-left:2px solid #1a1a2e;}
+        .tv-label{font-size:3vw;letter-spacing:4px;font-weight:bold;margin-bottom:9px;text-transform:uppercase; font-family:'Segoe UI', sans-serif;}
+        .tv-score{font-size:25vw;font-weight:900;line-height:.85;font-variant-numeric:tabular-nums;}
+        .tv-lc{color:#ff004c;text-shadow:0 0 50px rgba(255,0,76,.5);}
+        .tv-rc{color:#0cc346;text-shadow:0 0 50px rgba(12,195,70,.5);}
+
+        
+        .tv-cards { display: flex; gap: 8px; margin-top: 15px; min-height: 40px; }
+        .tv-card { width: 30px; height: 45px; border-radius: 4px; border: 2px solid rgba(255,255,255,0.2); }
+        .tv-card-white { background: #f0f6fc; }
+        .tv-card-yellow { background: #e4c700; }
+        .tv-card-red { background: #ff004c; }
+        .tv-card-black { background: #111; border-color: #555; }
+
+        
+        /* Nouvel affichage Compteurs E */
+        .tv-penalties-e { display: flex; gap: 20px; margin-top: 15px; }
+        .e-counter { display: flex; align-items: center; gap: 8px; font-size: 2vw; font-weight: bold; padding: 5px 15px; border-radius: 8px; background: rgba(0,0,0,0.3); }
+        .e-white { color: #f0f6fc; border: 1px solid #f0f6fc; }
+        .e-yellow { color: #e4c700; border: 1px solid #e4c700; }
+
+
+        
+        #tv-center{width:200px;display:flex;flex-direction:column;align-items:center;gap:14px;flex-shrink:0;}
+        #tv-chrono{font-size:7vw;font-weight:bold;color:#c9d1d9;letter-spacing:4px;padding:12px 20px;border:2px solid #222;border-radius:12px;background:#111;min-width:170px;text-align:center;transition:color .3s,border-color .3s;}
+        #tv-chrono.running{border-color:#007bff;color:#007bff;}
+        #tv-vs{font-size:1.4vw;color:#2a2a2a;letter-spacing:4px;}
+        #tv-conn{font-size:12px;padding:4px 10px;border-radius:8px;line-height:1.5;text-align:right;max-width:300px;}
+    </style>
+    <div id="tv-bar">
+        <span>ASL-FFE — Répéteur</span>
+        <span id="tv-conn">⏳ En attente...</span>
+        <span id="tv-clock"></span>
+    </div>
+    <div id="tv-main">
+        <div class="tv-side tv-side-l">
+            <div class="tv-label tv-lc" id="tv-left-name">ROUGE</div>
+            <div class="tv-score tv-lc" id="tv-left">0</div>
+            <div class="tv-penalties-e">
+                <div class="e-counter e-white">W: <span id="e-left-white">0</span></div>
+                <div class="e-counter e-yellow">Y: <span id="e-left-yellow">0</span></div>
+            </div>
+            <div class="tv-cards" id="tv-cards-left"></div>
         </div>
-        <div id="tv-main">
-            <div class="tv-side tv-side-l">
-                <div class="tv-label tv-lc" id="tv-left-name">ROUGE</div>
-                <div class="tv-score tv-lc" id="tv-left">0</div>
-                <div class="tv-cards" id="tv-cards-left"></div>
+        <div id="tv-center">
+            <div id="tv-chrono">03:00</div>
+            <div id="tv-vs">VS</div>
+        </div>
+        <div class="tv-side tv-side-r">
+            <div class="tv-label tv-rc" id="tv-right-name">VERT</div>
+            <div class="tv-score tv-rc" id="tv-right">0</div>
+            <div class="tv-penalties-e">
+                <div class="e-counter e-white">W: <span id="e-right-white">0</span></div>
+                <div class="e-counter e-yellow">Y: <span id="e-right-yellow">0</span></div>
             </div>
-            <div id="tv-center">
-                <div style="font-size:11px;color:#333;letter-spacing:2px;">TEMPS</div>
-                <div id="tv-chrono">03:00</div>
-                <div id="tv-vs">VS</div>
-            </div>
-            <div class="tv-side tv-side-r">
-                <div class="tv-label tv-rc" id="tv-right-name">VERT</div>
-                <div class="tv-score tv-rc" id="tv-right">0</div>
-                <div class="tv-cards" id="tv-cards-right"></div>
-            </div>
-        </div>`;
+            <div class="tv-cards" id="tv-cards-right"></div>
+        </div>
+    </div>`;
         setInterval(() => { const el = document.getElementById('tv-clock'); if (el) el.textContent = new Date().toLocaleTimeString('fr-FR'); }, 1000);
     }
 
@@ -237,18 +258,28 @@ document.addEventListener('DOMContentLoaded', () => {
         if(map[status]) { el.innerHTML = map[status].text; el.style.color = map[status].color; }
     }
 
-    function renderTVState(data) {
-        const set = (id, v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
-        set('tv-left', data.left);
-        set('tv-right', data.right);
-        set('tv-chrono', data.time);
-        if(data.leftName) set('tv-left-name', data.leftName);
-        if(data.rightName) set('tv-right-name', data.rightName);
-        const ch = document.getElementById('tv-chrono');
-        if (ch) ch.className = data.medical ? 'medical' : (data.running ? 'running' : '');
-        renderTVCards('tv-cards-left', data.penalties.left);
-        renderTVCards('tv-cards-right', data.penalties.right);
+function renderTVState(data) {
+    const set = (id, v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+    set('tv-left', data.left);
+    set('tv-right', data.right);
+    set('tv-chrono', data.time);
+    
+    // Noms
+    set('tv-left-name', data.leftName);
+    set('tv-right-name', data.rightName);
+
+    // Cartons classiques
+    renderTVCards('tv-cards-left', data.penalties.left);
+    renderTVCards('tv-cards-right', data.penalties.right);
+
+    // CARTONS E (Vérifiez bien ces IDs)
+    if (data.teamPenaltiesE) {
+        set('e-left-white', data.teamPenaltiesE.left.white);
+        set('e-left-yellow', data.teamPenaltiesE.left.yellow);
+        set('e-right-white', data.teamPenaltiesE.right.white);
+        set('e-right-yellow', data.teamPenaltiesE.right.yellow);
     }
+}
 
     function renderTVCards(containerId, p) {
         const el = document.getElementById(containerId);
@@ -314,7 +345,8 @@ document.addEventListener('DOMContentLoaded', () => {
             left: currentMatchScoreLeft, 
             right: currentMatchScoreRight, 
             penalties: JSON.parse(JSON.stringify(penalties)),
-            touches: relayTouches // Sauvegarde des touches
+            touches: relayTouches, // Sauvegarde des touches
+            teamPenaltiesE: JSON.parse(JSON.stringify(teamPenaltiesE)) // Sauvegarde carton E
         });
     }
 
@@ -340,15 +372,39 @@ document.addEventListener('DOMContentLoaded', () => {
         else { currentMatchScoreRight = Math.max(0, currentMatchScoreRight + points); rightScoreDisplay.textContent = currentMatchScoreRight; }
     }
 
-    function undoLastAction() {
-        if (scoreHistory.length === 0) return;
-        const prev = scoreHistory.pop();
-        currentMatchScoreLeft = prev.left; currentMatchScoreRight = prev.right;
-        penalties.left = { ...prev.penalties.left }; penalties.right = { ...prev.penalties.right };
-        relayTouches = prev.touches || 0; // Restauration des touches
-        leftScoreDisplay.textContent = currentMatchScoreLeft; rightScoreDisplay.textContent = currentMatchScoreRight;
-        updateCardDisplay(); updateRelayUI(); broadcastState();
-    }
+   function undoLastAction() {
+    if (scoreHistory.length === 0) return;
+    const prev = scoreHistory.pop();
+    
+    currentMatchScoreLeft = prev.left; 
+    currentMatchScoreRight = prev.right;
+    
+    // Restauration propre en modifiant les propriétés (Garde la référence intacte)
+    ['left', 'right'].forEach(p => {
+        penalties[p].group1 = prev.penalties[p].group1 || 0;
+        penalties[p].group2 = prev.penalties[p].group2 || 0;
+        penalties[p].group3 = prev.penalties[p].group3 || 0;
+        penalties[p].group4 = prev.penalties[p].group4 || 0;
+
+        if (prev.teamPenaltiesE && prev.teamPenaltiesE[p]) {
+            teamPenaltiesE[p].white = prev.teamPenaltiesE[p].white || 0;
+            teamPenaltiesE[p].yellow = prev.teamPenaltiesE[p].yellow || 0;
+        } else {
+            teamPenaltiesE[p].white = 0;
+            teamPenaltiesE[p].yellow = 0;
+        }
+    });
+    
+    relayTouches = prev.touches || 0;
+    
+    // Mise à jour de l'UI
+    leftScoreDisplay.textContent = currentMatchScoreLeft; 
+    rightScoreDisplay.textContent = currentMatchScoreRight;
+    updateCardDisplay(); 
+    updateRelayUI(); 
+    updateTeamCardEDisplay(); 
+    broadcastState();
+}
 
     function setMatchTime(seconds) {
         clearInterval(timerId); isTimerRunning = false; matchTimeInSeconds = seconds;
@@ -397,15 +453,31 @@ document.addEventListener('DOMContentLoaded', () => {
         clearInterval(timerId); clearInterval(medicalTimerId);
         isTimerRunning = false; isMedicalBreak = false;
         currentMatchScoreLeft = 0; currentMatchScoreRight = 0; matchTimeInSeconds = 180;
-        penalties.left = { group1:0, group2:0, group3:0, group4:0 }; penalties.right = { group1:0, group2:0, group3:0, group4:0 };
+        
+        // Reset propre des sanctions
+        ['left', 'right'].forEach(p => {
+            penalties[p].group1 = 0;
+            penalties[p].group2 = 0;
+            penalties[p].group3 = 0;
+            penalties[p].group4 = 0;
+            teamPenaltiesE[p].white = 0;
+            teamPenaltiesE[p].yellow = 0;
+        });
+        
         scoreHistory.length = 0;
         leftScoreDisplay.textContent = '0'; rightScoreDisplay.textContent = '0';
         matchChronoDisplay.textContent = '03:00';
         startStopButton.textContent = 'START'; startStopButton.style.backgroundColor = 'green';
         resetBtn.style.display = 'none'; medicalOverlay.classList.add('hidden');
         resetModal.classList.add('hidden');
-        updateCardDisplay(); broadcastState();
+        
+        // Rafraîchissement des visuels
+        updateCardDisplay(); 
+        updateTeamCardEDisplay();
+        broadcastState();
     }
+
+
 
     yesResetBtn.addEventListener('click', performReset);
     noResetBtn.addEventListener('click', () => resetModal.classList.add('hidden'));
@@ -446,12 +518,19 @@ document.addEventListener('DOMContentLoaded', () => {
         isTeamMode = !isTeamMode;
         teamModeBtn.style.backgroundColor = isTeamMode ? '#007bff' : 'transparent';
         teamModeBtn.style.color = isTeamMode ? 'white' : '#007bff';
+        
+        // Sélectionne tous les éléments de l'interface Équipe
+        const teamElements = document.querySelectorAll('.team-E-ui');
+        
         if(isTeamMode) {
             teamTouchesDisplay.classList.remove('hidden');
+            teamElements.forEach(el => el.classList.remove('hidden'));
             relayTouches = 0;
             updateRelayUI();
+            updateTeamCardEDisplay();
         } else {
             teamTouchesDisplay.classList.add('hidden');
+            teamElements.forEach(el => el.classList.add('hidden'));
         }
     });
 
@@ -498,9 +577,55 @@ document.addEventListener('DOMContentLoaded', () => {
         relayOverlay.classList.add('hidden');
         relayTouches = 0;
         updateRelayUI();
-        setMatchTime(180); // Repart sur 3 minutes max pour le combat suivant 
-        // Les scores globaux (A, B, C) restent intacts pour le cumul des 9 matchs !
+        
+        // IMPORTANT : Remise à zéro propre pour le nouveau relais
+        ['left', 'right'].forEach(p => {
+            penalties[p].group1 = 0;
+            penalties[p].group2 = 0;
+            penalties[p].group3 = 0;
+            penalties[p].group4 = 0;
+        });
+        
+        updateCardDisplay(); 
+        setMatchTime(180); 
     });
+
+
+// Gestion des clics sur les boutons Carton E
+    document.querySelectorAll('.team-E-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const player = btn.dataset.player;
+            const type = btn.dataset.type;
+            applyTeamCardE(player, type);
+        });
+    });
+
+    function applyTeamCardE(player, type) {
+        saveStateToHistory();
+        teamPenaltiesE[player][type]++;
+        
+        // Si c'est un carton jaune E, l'adversaire prend +3 points
+        if (type === 'yellow') {
+            const opponent = player === 'left' ? 'right' : 'left';
+            applyScore(opponent, 3);
+        }
+        
+        updateTeamCardEDisplay();
+        broadcastState();
+    }
+
+    function updateTeamCardEDisplay() {
+        ['left', 'right'].forEach(player => {
+            const el = document.getElementById(`${player}_card_E`);
+            if (!el) return;
+            const w = teamPenaltiesE[player].white;
+            const y = teamPenaltiesE[player].yellow;
+            
+            el.textContent = `E: ${w}⚪ ${y}🟡`;
+            el.style.opacity = (w > 0 || y > 0) ? '1' : '0.3';
+        });
+    }
+
 
 
     // ========= ÉVÉNEMENTS =========
@@ -593,8 +718,11 @@ document.addEventListener('DOMContentLoaded', () => {
     pointButtons.forEach(btn => btn.addEventListener('click', () => { 
         handlePointScored(btn.dataset.player, parseInt(btn.dataset.points, 10)); 
     }));
-    faultButtons.forEach(btn => btn.addEventListener('click', () => { const s = determineCardAndPoints(btn.dataset.player, parseInt(btn.dataset.group, 10)); if (s.endsMatch) handleElimination(btn.dataset.player); }));
-
+   
+    faultButtons.forEach(btn => btn.addEventListener('click', () => { if (!btn.dataset.group) return; // Ignore les boutons Équipe E qui n'ont pas de data-group
+    const s = determineCardAndPoints(btn.dataset.player, parseInt(btn.dataset.group, 10)); 
+        if (s.endsMatch) handleElimination(btn.dataset.player); 
+            }));
     document.addEventListener('keydown', (e) => {
         if (e.repeat || (document.activeElement && document.activeElement.tagName === 'INPUT')) return;
         const key = e.key.toLowerCase(); const code = e.code;
