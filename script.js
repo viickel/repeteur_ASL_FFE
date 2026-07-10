@@ -22,10 +22,10 @@ document.addEventListener('DOMContentLoaded', () => {
         right: { group1: 0, group2: 0, group3: 0, group4: 0 }
     };
 
-    const teamPenaltiesE = {
-        left: { white: 0, yellow: 0 },
-        right: { white: 0, yellow: 0 }
-    };
+const teamPenaltiesE = {
+    left: { group1: 0, group2: 0, white: 0, yellow: 0, group3: 0, red: 0 },
+    right: { group1: 0, group2: 0, white: 0, yellow: 0, group3: 0, red: 0 }
+};
 
     // ========= SÉLECTION DOM =========
     const matchChronoDisplay   = document.getElementById('matchChrono');
@@ -387,11 +387,19 @@ function renderTVState(data) {
         penalties[p].group4 = prev.penalties[p].group4 || 0;
 
         if (prev.teamPenaltiesE && prev.teamPenaltiesE[p]) {
+            teamPenaltiesE[p].group1 = prev.teamPenaltiesE[p].group1 || 0;
+            teamPenaltiesE[p].group2 = prev.teamPenaltiesE[p].group2 || 0;
+            teamPenaltiesE[p].group3 = prev.teamPenaltiesE[p].group3 || 0; 
             teamPenaltiesE[p].white = prev.teamPenaltiesE[p].white || 0;
             teamPenaltiesE[p].yellow = prev.teamPenaltiesE[p].yellow || 0;
+            teamPenaltiesE[p].red = prev.teamPenaltiesE[p].red || 0; 
         } else {
-            teamPenaltiesE[p].white = 0;
-            teamPenaltiesE[p].yellow = 0;
+            teamPenaltiesE[p].group1 = 0; 
+            teamPenaltiesE[p].group2 = 0; 
+            teamPenaltiesE[p].group3 = 0; 
+            teamPenaltiesE[p].white = 0; 
+            teamPenaltiesE[p].yellow = 0; 
+            teamPenaltiesE[p].red = 0; 
         }
     });
     
@@ -460,8 +468,13 @@ function renderTVState(data) {
             penalties[p].group2 = 0;
             penalties[p].group3 = 0;
             penalties[p].group4 = 0;
+            
+            teamPenaltiesE[p].group1 = 0;
+            teamPenaltiesE[p].group2 = 0;
+            teamPenaltiesE[p].group3 = 0;
             teamPenaltiesE[p].white = 0;
             teamPenaltiesE[p].yellow = 0;
+            teamPenaltiesE[p].red = 0; 
         });
         
         scoreHistory.length = 0;
@@ -600,29 +613,68 @@ function renderTVState(data) {
         });
     });
 
-    function applyTeamCardE(player, type) {
+function applyTeamCardE(player, type) {
         saveStateToHistory();
-        teamPenaltiesE[player][type]++;
         
-        // Si c'est un carton jaune E, l'adversaire prend +3 points
-        if (type === 'yellow') {
-            const opponent = player === 'left' ? 'right' : 'left';
-            applyScore(opponent, 3);
+        // Convertir le type cliqué ('white' ou 'yellow') en numéro de groupe
+        let group = (type === 'white') ? 1 : (type === 'yellow' ? 2 : 3);
+        // Si plus tard vous ajoutez data-type="red" dans le HTML, changez la ligne ci-dessus par :
+        // let group = (type === 'white') ? 1 : (type === 'yellow' ? 2 : 3);
+        
+        teamPenaltiesE[player]['group'+group]++; 
+        const lvl = teamPenaltiesE[player]['group'+group];
+        const opponent = player === 'left' ? 'right' : 'left';
+        
+        let points = 0;
+
+        switch(group) {
+            case 1: // Bouton Blanc E = 1er groupe (1er = Blanc [0pt], suivants = Jaune [+3pts])
+                points = (lvl === 1) ? 0 : 3;
+                break;
+            case 2: // Bouton Jaune E = 2ème groupe (1er = Jaune [+3pts], suivants = Rouge [+5pts])
+                points = (lvl === 1) ? 3 : 5;
+                break;
+            
+            case 3: // Bouton Rouge E = 3ème groupe (Rouge direct)
+                points = 5;
+                break;
+            
         }
+
+        if (points > 0) applyScore(opponent, points);
         
         updateTeamCardEDisplay();
         broadcastState();
     }
 
-    function updateTeamCardEDisplay() {
+function updateTeamCardEDisplay() {
         ['left', 'right'].forEach(player => {
             const el = document.getElementById(`${player}_card_E`);
             if (!el) return;
-            const w = teamPenaltiesE[player].white;
-            const y = teamPenaltiesE[player].yellow;
             
-            el.textContent = `E: ${w}⚪ ${y}🟡`;
-            el.style.opacity = (w > 0 || y > 0) ? '1' : '0.3';
+            const p = teamPenaltiesE[player];
+            let w = 0, y = 0, r = 0;
+
+            // Logique du Groupe 1
+            if (p.group1 >= 1) w = 1;
+            if (p.group1 >= 2) y += p.group1 - 1;
+            
+            // Logique du Groupe 2
+            if (p.group2 >= 1) y += 1;
+            if (p.group2 >= 2) r += p.group2 - 1;
+            if (p.group3 >= 1) r += 1;
+            
+
+            // Sauvegarde pour le mode TV (broadcastState)
+            p.white = w;
+            p.yellow = y;
+            p.red = r; 
+
+            // Affichage UI de base
+           el.textContent = `E: ${w}⚪ ${y}🟡 ${r}🔴`;
+          
+
+            el.style.opacity = (w > 0 || y > 0 || r > 0) ? '1' : '0.3';
         });
     }
 
