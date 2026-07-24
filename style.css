@@ -652,3 +652,40 @@ html, body {
 }
 
 
+
+/* ─── Ligne cartons E (mode équipe) ─── */
+.card-E-row {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px dashed var(--border);
+    gap: 4px;
+}
+
+/* Même hauteur que les cartons classiques */
+.card-E-row .card-counter {
+    height: 28px;
+}
+
+.card-display.card-E-white {
+    background: #f0f6fc;
+    color: #0d1117;
+    border: 2px solid #ffffff;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 0;
+    box-shadow: 0 0 10px rgba(240, 246, 252, 0.7), 0 0 3px rgba(255,255,255,0.9);
+    opacity: 1 !important;
+}
+.card-display.card-E-white::before { content: "W "; font-size: 10px; opacity: 0.5; font-weight: 400; }
+
+.card-display.card-E-yellow {
+    background: #e4c700;
+    color: #0d1117;
+    border: 2px solid #ffe033;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 0;
+    box-shadow: 0 0 10px rgba(228, 199, 0, 0.7), 0 0 3px rgba(255,224,51,0.9);
+    opacity: 1 !important;
+}
+.card-display.card-E-yellow::before { content: "Y "; font-size: 10px; opacity: 0.5; font-weight: 400; }

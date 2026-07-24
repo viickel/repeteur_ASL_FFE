@@ -149,7 +149,9 @@ const teamPenaltiesE = {
                 penalties: JSON.parse(JSON.stringify(penalties)),
                 leftName: leftNameInput ? leftNameInput.value.trim() : 'ROUGE',
                 rightName: rightNameInput ? rightNameInput.value.trim() : 'VERT',
-                teamPenaltiesE: teamPenaltiesE
+                teamPenaltiesE: teamPenaltiesE,
+                relayTouches: relayTouches,
+                isTeamMode: isTeamMode
             });
         } catch(e) { console.warn('broadcast error:', e); }
     }
@@ -175,69 +177,197 @@ const teamPenaltiesE = {
         document.body.innerHTML = `
         <style>
         *{margin:0;padding:0;box-sizing:border-box;}
-        body{background:#0a0d12;font-family:'Courier New',monospace;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
-        #tv-bar{background:#111;padding:6px 20px;font-size:10px;color:#444;display:flex;justify-content:space-between;align-items:center;}
-        #tv-main{flex:1;display:flex;align-items:center;justify-content:center;}
-        .tv-side{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:20px;}
-        .tv-side-l{border-right:2px solid #1a1a2e;}
-        .tv-side-r{border-left:2px solid #1a1a2e;}
-        .tv-label{font-size:3vw;letter-spacing:4px;font-weight:bold;margin-bottom:9px;text-transform:uppercase; font-family:'Segoe UI', sans-serif;}
-        .tv-score{font-size:25vw;font-weight:900;line-height:.85;font-variant-numeric:tabular-nums;}
-        .tv-lc{color:#ff004c;text-shadow:0 0 50px rgba(255,0,76,.5);}
-        .tv-rc{color:#0cc346;text-shadow:0 0 50px rgba(12,195,70,.5);}
+        body{background:#0a0d12;font-family:'Segoe UI',Arial,sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
 
-        
-        .tv-cards { display: flex; gap: 8px; margin-top: 15px; min-height: 40px; }
-        .tv-card { width: 30px; height: 45px; border-radius: 4px; border: 2px solid rgba(255,255,255,0.2); }
-        .tv-card-white { background: #f0f6fc; }
-        .tv-card-yellow { background: #e4c700; }
-        .tv-card-red { background: #ff004c; }
-        .tv-card-black { background: #111; border-color: #555; }
+        /* ── Barre de statut ── */
+        #tv-bar{
+            background:#0d1117;
+            border-bottom:1px solid #1a1a2e;
+            padding:5px 16px;
+            font-size:11px;color:#444;
+            display:flex;justify-content:space-between;align-items:center;
+            flex-shrink:0;
+        }
+        #tv-bar .tv-bar-logo { color:#4df5d9; font-weight:700; letter-spacing:2px; font-size:12px; }
+        #tv-conn{font-size:11px;padding:3px 8px;border-radius:6px;}
+        #tv-clock{color:#555; font-size:11px;}
 
-        
-        /* Nouvel affichage Compteurs E */
-        .tv-penalties-e { display: flex; gap: 20px; margin-top: 15px; }
-        .e-counter { display: flex; align-items: center; gap: 8px; font-size: 2vw; font-weight: bold; padding: 5px 15px; border-radius: 8px; background: rgba(0,0,0,0.3); }
-        .e-white { color: #f0f6fc; border: 1px solid #f0f6fc; }
-        .e-yellow { color: #e4c700; border: 1px solid #e4c700; }
+        /* ── Layout principal 3 colonnes ── */
+        #tv-main{
+            flex:1;
+            display:grid;
+            grid-template-columns:1fr auto 1fr;
+            min-height:0;
+        }
 
+        /* ── Côtés gauche et droit ── */
+        .tv-side{
+            display:flex;flex-direction:column;
+            min-height:0;
+            overflow:hidden;
+        }
 
-        
-        #tv-center{width:200px;display:flex;flex-direction:column;align-items:center;gap:14px;flex-shrink:0;}
-        #tv-chrono{font-size:7vw;font-weight:bold;color:#c9d1d9;letter-spacing:4px;padding:12px 20px;border:2px solid #222;border-radius:12px;background:#111;min-width:170px;text-align:center;transition:color .3s,border-color .3s;}
-        #tv-chrono.running{border-color:#007bff;color:#007bff;}
-        #tv-vs{font-size:1.4vw;color:#2a2a2a;letter-spacing:4px;}
-        #tv-conn{font-size:12px;padding:4px 10px;border-radius:8px;line-height:1.5;text-align:right;max-width:300px;}
-    </style>
-    <div id="tv-bar">
-        <span>ASL-FFE — Répéteur</span>
-        <span id="tv-conn">⏳ En attente...</span>
-        <span id="tv-clock"></span>
-    </div>
-    <div id="tv-main">
-        <div class="tv-side tv-side-l">
-            <div class="tv-label tv-lc" id="tv-left-name">ROUGE</div>
-            <div class="tv-score tv-lc" id="tv-left">0</div>
-            <div class="tv-penalties-e">
-                <div class="e-counter e-white">W: <span id="e-left-white">0</span></div>
-                <div class="e-counter e-yellow">Y: <span id="e-left-yellow">0</span></div>
+        /* Bandeau nom — fond coloré comme l'image de référence */
+        .tv-name-bar{
+            padding:clamp(8px,2vh,18px) 20px;
+            text-align:center;
+            font-size:clamp(1.4rem,4vw,3rem);
+            font-weight:900;
+            letter-spacing:3px;
+            text-transform:uppercase;
+            color:#fff;
+            flex-shrink:0;
+        }
+        .tv-name-bar.red-bar  { background:linear-gradient(135deg,#cc0038,#ff004c); text-shadow:0 2px 8px rgba(0,0,0,0.5); }
+        .tv-name-bar.green-bar{ background:linear-gradient(135deg,#0a8f32,#0cc346); text-shadow:0 2px 8px rgba(0,0,0,0.5); }
+
+        /* Zone score */
+        .tv-score-area{
+            flex:1;
+            display:flex;flex-direction:column;
+            align-items:center;justify-content:center;
+            padding:10px 20px;
+        }
+
+        .tv-score{
+            font-size:clamp(4rem,20vw,18rem);
+            font-weight:900;
+            line-height:0.9;
+            font-variant-numeric:tabular-nums;
+        }
+        .tv-lc{color:#ff004c; text-shadow:0 0 60px rgba(255,0,76,.4);}
+        .tv-rc{color:#0cc346; text-shadow:0 0 60px rgba(12,195,70,.4);}
+
+        /* Cartons classiques */
+        .tv-cards{display:flex;gap:6px;margin-top:14px;min-height:36px;align-items:center;justify-content:center;}
+        .tv-card{width:clamp(20px,2.5vw,36px);height:clamp(28px,3.5vw,50px);border-radius:4px;border:1px solid rgba(255,255,255,0.15);}
+        .tv-card-white {background:#f0f6fc;}
+        .tv-card-yellow{background:#e4c700;}
+        .tv-card-red   {background:#ff004c;}
+        .tv-card-black {background:#111;border-color:#555;}
+
+        /* Cartons E (mode équipe) */
+        .tv-cards-e{
+            display:flex;gap:10px;margin-top:8px;min-height:24px;
+            align-items:center;justify-content:center;
+        }
+        .tv-card-e-badge{
+            font-size:clamp(0.7rem,1.5vw,1.1rem);
+            font-weight:700;
+            padding:3px 10px;
+            border-radius:20px;
+            letter-spacing:1px;
+        }
+        .tv-card-e-white { color:#0d1117; background:#f0f6fc; }
+        .tv-card-e-yellow{ color:#0d1117; background:#e4c700; }
+
+        /* ── Colonne centrale ── */
+        #tv-center{
+            display:flex;flex-direction:column;
+            align-items:center;justify-content:center;
+            gap:12px;
+            padding:10px 16px;
+            border-left:1px solid #1a1a2e;
+            border-right:1px solid #1a1a2e;
+            min-width:clamp(140px,18vw,260px);
+            background:#0d1117;
+        }
+
+        .tv-center-label{
+            font-size:clamp(0.5rem,1vw,0.75rem);
+            color:#333;
+            letter-spacing:3px;
+            text-transform:uppercase;
+        }
+
+        #tv-chrono{
+            font-size:clamp(2rem,7vw,6rem);
+            font-weight:900;
+            color:#c9d1d9;
+            letter-spacing:3px;
+            font-variant-numeric:tabular-nums;
+            text-align:center;
+            padding:12px 16px;
+            background:#111;
+            border:2px solid #1a1a2e;
+            border-radius:10px;
+            width:100%;
+            transition:color .3s,border-color .3s,box-shadow .3s;
+        }
+        #tv-chrono.running{
+            border-color:#4df5d9;
+            color:#4df5d9;
+            box-shadow:0 0 20px rgba(77,245,217,0.2);
+        }
+        #tv-chrono.medical{
+            border-color:#ff004c;
+            color:#ff004c;
+            animation:tvblink 1s infinite;
+        }
+        @keyframes tvblink{0%,100%{opacity:1}50%{opacity:0.4}}
+
+        #tv-vs{
+            font-size:clamp(0.7rem,1.5vw,1.2rem);
+            color:#222;
+            letter-spacing:6px;
+            font-weight:700;
+        }
+
+        /* Touches relais (mode équipe) */
+        #tv-relay{
+            font-size:clamp(0.65rem,1.2vw,0.9rem);
+            color:#e4c700;
+            font-weight:700;
+            letter-spacing:1px;
+            text-align:center;
+            padding:6px 12px;
+            background:rgba(228,199,0,0.1);
+            border:1px solid rgba(228,199,0,0.3);
+            border-radius:8px;
+            display:none;
+        }
+        #tv-relay.active{display:block;}
+
+        </style>
+
+        <div id="tv-bar">
+            <span class="tv-bar-logo">ASL-FFE</span>
+            <span id="tv-conn">⏳ En attente...</span>
+            <span id="tv-clock"></span>
+        </div>
+
+        <div id="tv-main">
+
+            <!-- Côté ROUGE -->
+            <div class="tv-side">
+                <div class="tv-name-bar red-bar" id="tv-left-name">ROUGE</div>
+                <div class="tv-score-area">
+                    <div class="tv-score tv-lc" id="tv-left">0</div>
+                    <div class="tv-cards" id="tv-cards-left"></div>
+                    <div class="tv-cards-e" id="tv-cards-e-left"></div>
+                </div>
             </div>
-            <div class="tv-cards" id="tv-cards-left"></div>
-        </div>
-        <div id="tv-center">
-            <div id="tv-chrono">03:00</div>
-            <div id="tv-vs">VS</div>
-        </div>
-        <div class="tv-side tv-side-r">
-            <div class="tv-label tv-rc" id="tv-right-name">VERT</div>
-            <div class="tv-score tv-rc" id="tv-right">0</div>
-            <div class="tv-penalties-e">
-                <div class="e-counter e-white">W: <span id="e-right-white">0</span></div>
-                <div class="e-counter e-yellow">Y: <span id="e-right-yellow">0</span></div>
+
+            <!-- Centre : chrono -->
+            <div id="tv-center">
+                <div class="tv-center-label">TEMPS</div>
+                <div id="tv-chrono">03:00</div>
+                <div id="tv-vs">VS</div>
+                <div id="tv-relay">⚡ 0 / 5 touches</div>
             </div>
-            <div class="tv-cards" id="tv-cards-right"></div>
-        </div>
-    </div>`;
+
+            <!-- Côté VERT -->
+            <div class="tv-side">
+                <div class="tv-name-bar green-bar" id="tv-right-name">VERT</div>
+                <div class="tv-score-area">
+                    <div class="tv-score tv-rc" id="tv-right">0</div>
+                    <div class="tv-cards" id="tv-cards-right"></div>
+                    <div class="tv-cards-e" id="tv-cards-e-right"></div>
+                </div>
+            </div>
+
+        </div>`;
+
         setInterval(() => { const el = document.getElementById('tv-clock'); if (el) el.textContent = new Date().toLocaleTimeString('fr-FR'); }, 1000);
     }
 
@@ -260,25 +390,43 @@ const teamPenaltiesE = {
 
 function renderTVState(data) {
     const set = (id, v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
-    set('tv-left', data.left);
+    set('tv-left',  data.left);
     set('tv-right', data.right);
     set('tv-chrono', data.time);
-    
-    // Noms
-    set('tv-left-name', data.leftName);
-    set('tv-right-name', data.rightName);
+    set('tv-left-name',  data.leftName  || 'ROUGE');
+    set('tv-right-name', data.rightName || 'VERT');
+
+    // Chrono : état visuel
+    const ch = document.getElementById('tv-chrono');
+    if (ch) ch.className = data.medical ? 'medical' : (data.running ? 'running' : '');
 
     // Cartons classiques
-    renderTVCards('tv-cards-left', data.penalties.left);
+    renderTVCards('tv-cards-left',  data.penalties.left);
     renderTVCards('tv-cards-right', data.penalties.right);
 
-    // CARTONS E (Vérifiez bien ces IDs)
-    if (data.teamPenaltiesE) {
-        set('e-left-white', data.teamPenaltiesE.left.white);
-        set('e-left-yellow', data.teamPenaltiesE.left.yellow);
-        set('e-right-white', data.teamPenaltiesE.right.white);
-        set('e-right-yellow', data.teamPenaltiesE.right.yellow);
+    // Cartons E — badges compacts
+    renderTVCardsE('tv-cards-e-left',  data.teamPenaltiesE ? data.teamPenaltiesE.left  : null);
+    renderTVCardsE('tv-cards-e-right', data.teamPenaltiesE ? data.teamPenaltiesE.right : null);
+
+    // Touches relais
+    const relayEl = document.getElementById('tv-relay');
+    if (relayEl) {
+        if (data.relayTouches !== undefined && data.isTeamMode) {
+            relayEl.textContent = `⚡ ${data.relayTouches} / 5 touches`;
+            relayEl.classList.add('active');
+        } else {
+            relayEl.classList.remove('active');
+        }
     }
+}
+
+function renderTVCardsE(containerId, p) {
+    const el = document.getElementById(containerId);
+    if (!el || !p) { if (el) el.innerHTML = ''; return; }
+    let html = '';
+    if (p.white  > 0) html += `<span class="tv-card-e-badge tv-card-e-white">Blanc E ×${p.white}</span>`;
+    if (p.yellow > 0) html += `<span class="tv-card-e-badge tv-card-e-yellow">Jaune E ×${p.yellow}</span>`;
+    el.innerHTML = html;
 }
 
     function renderTVCards(containerId, p) {
@@ -649,32 +797,31 @@ function applyTeamCardE(player, type) {
 
 function updateTeamCardEDisplay() {
         ['left', 'right'].forEach(player => {
-            const el = document.getElementById(`${player}_card_E`);
-            if (!el) return;
-            
             const p = teamPenaltiesE[player];
             let w = 0, y = 0, r = 0;
 
-            // Logique du Groupe 1
+            // Logique des groupes E
             if (p.group1 >= 1) w = 1;
             if (p.group1 >= 2) y += p.group1 - 1;
-            
-            // Logique du Groupe 2
             if (p.group2 >= 1) y += 1;
             if (p.group2 >= 2) r += p.group2 - 1;
             if (p.group3 >= 1) r += 1;
-            
 
-            // Sauvegarde pour le mode TV (broadcastState)
-            p.white = w;
-            p.yellow = y;
-            p.red = r; 
+            // Sauvegarde pour broadcastState
+            p.white = w; p.yellow = y; p.red = r;
 
-            // Affichage UI de base
-           el.textContent = `E: ${w}⚪ ${y}🟡 ${r}🔴`;
-          
-
-            el.style.opacity = (w > 0 || y > 0 || r > 0) ? '1' : '0.3';
+            // Compteur blanc E — visible seulement si > 0
+            const elW = document.getElementById(`${player}_card_E_white`);
+            if (elW) {
+                elW.textContent = w;
+                w > 0 ? elW.classList.remove('hidden') : elW.classList.add('hidden');
+            }
+            // Compteur jaune E — visible seulement si > 0
+            const elY = document.getElementById(`${player}_card_E_yellow`);
+            if (elY) {
+                elY.textContent = y;
+                y > 0 ? elY.classList.remove('hidden') : elY.classList.add('hidden');
+            }
         });
     }
 
