@@ -273,13 +273,16 @@ const teamPenaltiesE = {
             background:#0d1117;
         }
 
+        /* Label TEMPS — plus visible */
         .tv-center-label{
-            font-size:clamp(0.5rem,1vw,0.75rem);
-            color:#333;
-            letter-spacing:3px;
+            font-size:clamp(0.7rem,1.2vw,1rem);
+            color:#555;
+            letter-spacing:4px;
             text-transform:uppercase;
+            font-weight:700;
         }
 
+        /* Chrono — inchangé */
         #tv-chrono{
             font-size:clamp(2rem,7vw,6rem);
             font-weight:900;
@@ -306,24 +309,27 @@ const teamPenaltiesE = {
         }
         @keyframes tvblink{0%,100%{opacity:1}50%{opacity:0.4}}
 
+        /* VS — visible mais discret */
         #tv-vs{
-            font-size:clamp(0.7rem,1.5vw,1.2rem);
-            color:#222;
-            letter-spacing:6px;
-            font-weight:700;
+            font-size:clamp(0.8rem,1.6vw,1.4rem);
+            color:#3a3a3a;
+            letter-spacing:8px;
+            font-weight:900;
         }
 
-        /* Touches relais (mode équipe) */
+        /* Touches relais — lisible à 10m */
         #tv-relay{
-            font-size:clamp(0.65rem,1.2vw,0.9rem);
+            font-size:clamp(1rem,2.2vw,2rem);
             color:#e4c700;
-            font-weight:700;
+            font-weight:900;
             letter-spacing:1px;
             text-align:center;
-            padding:6px 12px;
-            background:rgba(228,199,0,0.1);
-            border:1px solid rgba(228,199,0,0.3);
-            border-radius:8px;
+            padding:10px 16px;
+            background:rgba(228,199,0,0.12);
+            border:2px solid rgba(228,199,0,0.5);
+            border-radius:10px;
+            width:100%;
+            text-shadow:0 0 12px rgba(228,199,0,0.4);
             display:none;
         }
         #tv-relay.active{display:block;}
