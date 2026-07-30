@@ -92,6 +92,72 @@ const teamPenaltiesE = {
     if (dismissBtn) { dismissBtn.addEventListener('click', () => { installBanner.style.display = 'none'; }); }
     window.addEventListener('appinstalled', () => { if (installBanner) installBanner.style.display = 'none'; deferredInstallPrompt = null; });
 
+    // ========= OBS STREAMING =========
+    let obsWs = null;
+    let obsConnected = false;
+    let obsArenaId = 1;
+    let obsPingInterval = null;
+
+    function connectOBS(ip, arenaId) {
+        obsArenaId = arenaId;
+        if (obsWs) { obsWs.close(); obsWs = null; }
+        const url = `ws://${ip}:3000?role=tablet&arena=${arenaId}`;
+        obsWs = new WebSocket(url);
+        obsWs.onopen  = () => {
+            obsConnected = true;
+            updateOBSStatus('connected');
+            broadcastStateToOBS(); // envoie état immédiatement
+        };
+        obsWs.onclose = () => {
+            obsConnected = false;
+            updateOBSStatus('disconnected');
+            if (obsPingInterval) { clearInterval(obsPingInterval); obsPingInterval = null; }
+        };
+        obsWs.onerror = () => { obsConnected = false; updateOBSStatus('error'); };
+
+        // Ping toutes les 20s pour maintenir la connexion vivante
+        if (obsPingInterval) clearInterval(obsPingInterval);
+        obsPingInterval = setInterval(() => {
+            if (obsWs && obsWs.readyState === WebSocket.OPEN) {
+                obsWs.send(JSON.stringify({ type: 'ping' }));
+            }
+        }, 20000);
+    }
+
+    function broadcastStateToOBS() {
+        if (!obsWs || obsWs.readyState !== WebSocket.OPEN) return;
+        try {
+            obsWs.send(JSON.stringify({
+                type: 'state',
+                left:            currentMatchScoreLeft,
+                right:           currentMatchScoreRight,
+                time:            formatTime(matchTimeInSeconds),
+                running:         isTimerRunning,
+                medical:         isMedicalBreak,
+                penalties:       JSON.parse(JSON.stringify(penalties)),
+                leftName:        leftNameInput ? leftNameInput.value.trim() : 'ROUGE',
+                rightName:       rightNameInput ? rightNameInput.value.trim() : 'VERT',
+                teamPenaltiesE:  teamPenaltiesE,
+                relayTouches:    relayTouches,
+                isTeamMode:      isTeamMode
+            }));
+        } catch(e) { console.warn('[OBS] Erreur envoi:', e); }
+    }
+
+    function updateOBSStatus(status) {
+        const el = document.getElementById('obsStatus');
+        if (!el) return;
+        const map = {
+            idle:         { text: '🎥 OBS Streaming', color: '#8b949e' },
+            connected:    { text: `✅ OBS Arène ${obsArenaId}`, color: '#0cc346' },
+            disconnected: { text: '❌ OBS déconnecté', color: '#ff004c' },
+            error:        { text: '⚠ Erreur OBS', color: '#ff004c' },
+        };
+        const s = map[status] || map.idle;
+        el.textContent = s.text;
+        el.style.color = s.color;
+    }
+
     // ========= PEER.JS — CAST TV =========
     let peer = null;
     let tvConnection = null;
@@ -137,23 +203,27 @@ const teamPenaltiesE = {
     }
 
     function broadcastState() {
-        if (!tvConnection || !tvConnection.open) return;
-        try {
-            tvConnection.send({
-                type: 'state',
-                left: currentMatchScoreLeft,
-                right: currentMatchScoreRight,
-                time: formatTime(matchTimeInSeconds),
-                running: isTimerRunning,
-                medical: isMedicalBreak,
-                penalties: JSON.parse(JSON.stringify(penalties)),
-                leftName: leftNameInput ? leftNameInput.value.trim() : 'ROUGE',
-                rightName: rightNameInput ? rightNameInput.value.trim() : 'VERT',
-                teamPenaltiesE: teamPenaltiesE,
-                relayTouches: relayTouches,
-                isTeamMode: isTeamMode
-            });
-        } catch(e) { console.warn('broadcast error:', e); }
+        // PeerJS → TV cast (seulement si connecté)
+        if (tvConnection && tvConnection.open) {
+            try {
+                tvConnection.send({
+                    type: 'state',
+                    left: currentMatchScoreLeft,
+                    right: currentMatchScoreRight,
+                    time: formatTime(matchTimeInSeconds),
+                    running: isTimerRunning,
+                    medical: isMedicalBreak,
+                    penalties: JSON.parse(JSON.stringify(penalties)),
+                    leftName: leftNameInput ? leftNameInput.value.trim() : 'ROUGE',
+                    rightName: rightNameInput ? rightNameInput.value.trim() : 'VERT',
+                    teamPenaltiesE: teamPenaltiesE,
+                    relayTouches: relayTouches,
+                    isTeamMode: isTeamMode
+                });
+            } catch(e) { console.warn('broadcast PeerJS error:', e); }
+        }
+        // WebSocket → serveur OBS (indépendant de PeerJS)
+        broadcastStateToOBS();
     }
 
     function updateCastStatus(status, code) {
@@ -273,16 +343,13 @@ const teamPenaltiesE = {
             background:#0d1117;
         }
 
-        /* Label TEMPS — plus visible */
         .tv-center-label{
-            font-size:clamp(0.7rem,1.2vw,1rem);
-            color:#555;
-            letter-spacing:4px;
+            font-size:clamp(0.5rem,1vw,0.75rem);
+            color:#333;
+            letter-spacing:3px;
             text-transform:uppercase;
-            font-weight:700;
         }
 
-        /* Chrono — inchangé */
         #tv-chrono{
             font-size:clamp(2rem,7vw,6rem);
             font-weight:900;
@@ -309,27 +376,24 @@ const teamPenaltiesE = {
         }
         @keyframes tvblink{0%,100%{opacity:1}50%{opacity:0.4}}
 
-        /* VS — visible mais discret */
         #tv-vs{
-            font-size:clamp(0.8rem,1.6vw,1.4rem);
-            color:#3a3a3a;
-            letter-spacing:8px;
-            font-weight:900;
+            font-size:clamp(0.7rem,1.5vw,1.2rem);
+            color:#222;
+            letter-spacing:6px;
+            font-weight:700;
         }
 
-        /* Touches relais — lisible à 10m */
+        /* Touches relais (mode équipe) */
         #tv-relay{
-            font-size:clamp(1rem,2.2vw,2rem);
+            font-size:clamp(0.65rem,1.2vw,0.9rem);
             color:#e4c700;
-            font-weight:900;
+            font-weight:700;
             letter-spacing:1px;
             text-align:center;
-            padding:10px 16px;
-            background:rgba(228,199,0,0.12);
-            border:2px solid rgba(228,199,0,0.5);
-            border-radius:10px;
-            width:100%;
-            text-shadow:0 0 12px rgba(228,199,0,0.4);
+            padding:6px 12px;
+            background:rgba(228,199,0,0.1);
+            border:1px solid rgba(228,199,0,0.3);
+            border-radius:8px;
             display:none;
         }
         #tv-relay.active{display:block;}
@@ -463,6 +527,22 @@ function renderTVCardsE(containerId, p) {
             <hr style="border-color:#30363d;margin:1.5em 0;">
             <input id="castCodeInput" type="text" placeholder="ASL-XXXX" style="width:100%;background:#0d1117;border:2px solid #30363d;border-radius:8px;padding:10px;color:#c9d1d9;font-size:18px;text-align:center;font-weight:bold;text-transform:uppercase;margin-bottom:10px;">
             <button id="castConnectBtn" style="background:#0cc346;color:#0d1117;border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:bold;cursor:pointer;width:100%;">MODE TV</button>
+            <hr style="border-color:#30363d;margin:1.5em 0;">
+            <div style="margin-bottom:10px;font-size:0.85rem;color:#8b949e;letter-spacing:1px;">🎥 OBS STREAMING</div>
+            <div style="display:flex;gap:6px;margin-bottom:8px;">
+                <input id="obsIpInput" type="text" placeholder="IP du PC OBS (ex: 192.168.1.10)"
+                    style="flex:1;background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:8px 10px;color:#c9d1d9;font-size:13px;"
+                    value="${localStorage.getItem('obsIp') || ''}">
+                <select id="obsArenaSelect"
+                    style="background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:8px;color:#c9d1d9;font-size:13px;cursor:pointer;">
+                    ${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${(parseInt(localStorage.getItem('obsArena'))||1)===n?'selected':''}>Arène ${n}</option>`).join('')}
+                </select>
+            </div>
+            <button id="obsConnectBtn"
+                style="background:#7b2fff;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:bold;cursor:pointer;width:100%;margin-bottom:6px;">
+                Connecter au serveur OBS
+            </button>
+            <div id="obsStatus" style="font-size:0.78rem;color:#8b949e;text-align:center;min-height:18px;">🎥 OBS Streaming</div>
             <button id="castCloseBtn" style="margin-top:1.5em;background:transparent;border:1px solid #30363d;color:#8b949e;border-radius:8px;padding:8px 20px;cursor:pointer;">Fermer</button>
         </div>`;
         document.body.appendChild(modal);
@@ -482,6 +562,16 @@ function renderTVCardsE(containerId, p) {
         });
 
         document.getElementById('castCloseBtn').addEventListener('click', () => modal.style.display = 'none');
+
+        document.getElementById('obsConnectBtn').addEventListener('click', () => {
+            const ip    = document.getElementById('obsIpInput').value.trim();
+            const arena = parseInt(document.getElementById('obsArenaSelect').value);
+            if (!ip) { alert('Entre l\'IP du PC OBS.'); return; }
+            localStorage.setItem('obsIp',    ip);
+            localStorage.setItem('obsArena', arena);
+            updateOBSStatus('idle');
+            connectOBS(ip, arena);
+        });
     }
 
     // ========= UTILITAIRES =========
@@ -631,6 +721,8 @@ function renderTVCardsE(containerId, p) {
             teamPenaltiesE[p].red = 0; 
         });
         
+        relayTouches = 0;
+        if (teamTouchesCount) teamTouchesCount.textContent = '0';
         scoreHistory.length = 0;
         leftScoreDisplay.textContent = '0'; rightScoreDisplay.textContent = '0';
         matchChronoDisplay.textContent = '03:00';
@@ -643,6 +735,7 @@ function renderTVCardsE(containerId, p) {
         updateTeamCardEDisplay();
         broadcastState();
     }
+
 
 
 
