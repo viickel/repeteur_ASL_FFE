@@ -96,7 +96,6 @@ const teamPenaltiesE = {
     let obsWs = null;
     let obsConnected = false;
     let obsArenaId = 1;
-    let obsPingInterval = null;
 
     function connectOBS(ip, arenaId) {
         obsArenaId = arenaId;
@@ -108,20 +107,8 @@ const teamPenaltiesE = {
             updateOBSStatus('connected');
             broadcastStateToOBS(); // envoie état immédiatement
         };
-        obsWs.onclose = () => {
-            obsConnected = false;
-            updateOBSStatus('disconnected');
-            if (obsPingInterval) { clearInterval(obsPingInterval); obsPingInterval = null; }
-        };
+        obsWs.onclose = () => { obsConnected = false; updateOBSStatus('disconnected'); };
         obsWs.onerror = () => { obsConnected = false; updateOBSStatus('error'); };
-
-        // Ping toutes les 20s pour maintenir la connexion vivante
-        if (obsPingInterval) clearInterval(obsPingInterval);
-        obsPingInterval = setInterval(() => {
-            if (obsWs && obsWs.readyState === WebSocket.OPEN) {
-                obsWs.send(JSON.stringify({ type: 'ping' }));
-            }
-        }, 20000);
     }
 
     function broadcastStateToOBS() {
@@ -203,26 +190,24 @@ const teamPenaltiesE = {
     }
 
     function broadcastState() {
-        // PeerJS → TV cast (seulement si connecté)
-        if (tvConnection && tvConnection.open) {
-            try {
-                tvConnection.send({
-                    type: 'state',
-                    left: currentMatchScoreLeft,
-                    right: currentMatchScoreRight,
-                    time: formatTime(matchTimeInSeconds),
-                    running: isTimerRunning,
-                    medical: isMedicalBreak,
-                    penalties: JSON.parse(JSON.stringify(penalties)),
-                    leftName: leftNameInput ? leftNameInput.value.trim() : 'ROUGE',
-                    rightName: rightNameInput ? rightNameInput.value.trim() : 'VERT',
-                    teamPenaltiesE: teamPenaltiesE,
-                    relayTouches: relayTouches,
-                    isTeamMode: isTeamMode
-                });
-            } catch(e) { console.warn('broadcast PeerJS error:', e); }
-        }
-        // WebSocket → serveur OBS (indépendant de PeerJS)
+        if (!tvConnection || !tvConnection.open) return;
+        try {
+            tvConnection.send({
+                type: 'state',
+                left: currentMatchScoreLeft,
+                right: currentMatchScoreRight,
+                time: formatTime(matchTimeInSeconds),
+                running: isTimerRunning,
+                medical: isMedicalBreak,
+                penalties: JSON.parse(JSON.stringify(penalties)),
+                leftName: leftNameInput ? leftNameInput.value.trim() : 'ROUGE',
+                rightName: rightNameInput ? rightNameInput.value.trim() : 'VERT',
+                teamPenaltiesE: teamPenaltiesE,
+                relayTouches: relayTouches,
+                isTeamMode: isTeamMode
+            });
+        } catch(e) { console.warn('broadcast error:', e); }
+        // Envoie aussi au serveur OBS streaming
         broadcastStateToOBS();
     }
 
@@ -533,10 +518,10 @@ function renderTVCardsE(containerId, p) {
                 <input id="obsIpInput" type="text" placeholder="IP du PC OBS (ex: 192.168.1.10)"
                     style="flex:1;background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:8px 10px;color:#c9d1d9;font-size:13px;"
                     value="${localStorage.getItem('obsIp') || ''}">
-                <select id="obsArenaSelect"
-                    style="background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:8px;color:#c9d1d9;font-size:13px;cursor:pointer;">
-                    ${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${(parseInt(localStorage.getItem('obsArena'))||1)===n?'selected':''}>Arène ${n}</option>`).join('')}
-                </select>
+                <input id="obsArenaSelect" type="number" min="1" max="20"
+                    value="${parseInt(localStorage.getItem('obsArena'))||1}"
+                    style="background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:8px;color:#c9d1d9;font-size:13px;width:70px;text-align:center;"
+                    title="Numéro d'arène (1 à 20)">
             </div>
             <button id="obsConnectBtn"
                 style="background:#7b2fff;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:bold;cursor:pointer;width:100%;margin-bottom:6px;">
@@ -721,8 +706,6 @@ function renderTVCardsE(containerId, p) {
             teamPenaltiesE[p].red = 0; 
         });
         
-        relayTouches = 0;
-        if (teamTouchesCount) teamTouchesCount.textContent = '0';
         scoreHistory.length = 0;
         leftScoreDisplay.textContent = '0'; rightScoreDisplay.textContent = '0';
         matchChronoDisplay.textContent = '03:00';
@@ -735,7 +718,6 @@ function renderTVCardsE(containerId, p) {
         updateTeamCardEDisplay();
         broadcastState();
     }
-
 
 
 
