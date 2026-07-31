@@ -100,12 +100,34 @@ const teamPenaltiesE = {
     function connectOBS(ip, arenaId) {
         obsArenaId = arenaId;
         if (obsWs) { obsWs.close(); obsWs = null; }
+
+        // Le navigateur bloque ws:// depuis une page HTTPS (Mixed Content).
+        // On détecte ce cas et on informe l'utilisateur.
+        if (window.location.protocol === 'https:') {
+            updateOBSStatus('https-block');
+            const httpUrl = 'http://' + window.location.host + window.location.pathname;
+            const obsMsg = [
+                '⚠ Connexion OBS impossible',
+                '',
+                'Le site est en HTTPS mais le serveur OBS tourne en HTTP local.',
+                'Le navigateur bloque cette connexion.',
+                '',
+                'Solution : ouvre le répéteur via HTTP :',
+                httpUrl
+            ].join('\n');
+            showNotification(obsMsg, 'yellow');
+            return;
+        }
+
         const url = `ws://${ip}:3000?role=tablet&arena=${arenaId}`;
         obsWs = new WebSocket(url);
         obsWs.onopen  = () => {
             obsConnected = true;
             updateOBSStatus('connected');
-            broadcastStateToOBS(); // envoie état immédiatement
+            // Envoie l'état complet immédiatement à la connexion
+            broadcastStateToOBS();
+            // Puis un second envoi après 500ms pour s'assurer que le serveur est prêt
+            setTimeout(broadcastStateToOBS, 500);
         };
         obsWs.onclose = () => { obsConnected = false; updateOBSStatus('disconnected'); };
         obsWs.onerror = () => { obsConnected = false; updateOBSStatus('error'); };
@@ -135,10 +157,11 @@ const teamPenaltiesE = {
         const el = document.getElementById('obsStatus');
         if (!el) return;
         const map = {
-            idle:         { text: '🎥 OBS Streaming', color: '#8b949e' },
-            connected:    { text: `✅ OBS Arène ${obsArenaId}`, color: '#0cc346' },
-            disconnected: { text: '❌ OBS déconnecté', color: '#ff004c' },
-            error:        { text: '⚠ Erreur OBS', color: '#ff004c' },
+            idle:          { text: '🎥 OBS Streaming', color: '#8b949e' },
+            connected:     { text: `✅ OBS Arène ${obsArenaId}`, color: '#0cc346' },
+            disconnected:  { text: '❌ OBS déconnecté', color: '#ff004c' },
+            error:         { text: '⚠ Erreur OBS', color: '#ff004c' },
+            'https-block': { text: '🔒 HTTPS — utilise http://', color: '#e4c700' },
         };
         const s = map[status] || map.idle;
         el.textContent = s.text;
@@ -190,24 +213,26 @@ const teamPenaltiesE = {
     }
 
     function broadcastState() {
-        if (!tvConnection || !tvConnection.open) return;
-        try {
-            tvConnection.send({
-                type: 'state',
-                left: currentMatchScoreLeft,
-                right: currentMatchScoreRight,
-                time: formatTime(matchTimeInSeconds),
-                running: isTimerRunning,
-                medical: isMedicalBreak,
-                penalties: JSON.parse(JSON.stringify(penalties)),
-                leftName: leftNameInput ? leftNameInput.value.trim() : 'ROUGE',
-                rightName: rightNameInput ? rightNameInput.value.trim() : 'VERT',
-                teamPenaltiesE: teamPenaltiesE,
-                relayTouches: relayTouches,
-                isTeamMode: isTeamMode
-            });
-        } catch(e) { console.warn('broadcast error:', e); }
-        // Envoie aussi au serveur OBS streaming
+        // PeerJS → TV cast (seulement si connecté)
+        if (tvConnection && tvConnection.open) {
+            try {
+                tvConnection.send({
+                    type: 'state',
+                    left: currentMatchScoreLeft,
+                    right: currentMatchScoreRight,
+                    time: formatTime(matchTimeInSeconds),
+                    running: isTimerRunning,
+                    medical: isMedicalBreak,
+                    penalties: JSON.parse(JSON.stringify(penalties)),
+                    leftName: leftNameInput ? leftNameInput.value.trim() : 'ROUGE',
+                    rightName: rightNameInput ? rightNameInput.value.trim() : 'VERT',
+                    teamPenaltiesE: teamPenaltiesE,
+                    relayTouches: relayTouches,
+                    isTeamMode: isTeamMode
+                });
+            } catch(e) { console.warn('broadcast PeerJS error:', e); }
+        }
+        // WebSocket → serveur OBS (indépendant de PeerJS)
         broadcastStateToOBS();
     }
 
@@ -512,6 +537,7 @@ function renderTVCardsE(containerId, p) {
             <hr style="border-color:#30363d;margin:1.5em 0;">
             <input id="castCodeInput" type="text" placeholder="ASL-XXXX" style="width:100%;background:#0d1117;border:2px solid #30363d;border-radius:8px;padding:10px;color:#c9d1d9;font-size:18px;text-align:center;font-weight:bold;text-transform:uppercase;margin-bottom:10px;">
             <button id="castConnectBtn" style="background:#0cc346;color:#0d1117;border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:bold;cursor:pointer;width:100%;">MODE TV</button>
+            <div id="obsCastSection" style="display:none;">
             <hr style="border-color:#30363d;margin:1.5em 0;">
             <div style="margin-bottom:10px;font-size:0.85rem;color:#8b949e;letter-spacing:1px;">🎥 OBS STREAMING</div>
             <div style="display:flex;gap:6px;margin-bottom:8px;">
@@ -528,9 +554,25 @@ function renderTVCardsE(containerId, p) {
                 Connecter au serveur OBS
             </button>
             <div id="obsStatus" style="font-size:0.78rem;color:#8b949e;text-align:center;min-height:18px;">🎥 OBS Streaming</div>
+            </div>
             <button id="castCloseBtn" style="margin-top:1.5em;background:transparent;border:1px solid #30363d;color:#8b949e;border-radius:8px;padding:8px 20px;cursor:pointer;">Fermer</button>
         </div>`;
         document.body.appendChild(modal);
+
+        // Affiche la section OBS uniquement si on est sur un réseau local (pas GitHub Pages)
+        // Détection : hostname = localhost, IP locale (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+        const obsSection = document.getElementById('obsCastSection');
+        if (obsSection) {
+            const host = window.location.hostname;
+            const isLocal = host === 'localhost'
+                || host === '127.0.0.1'
+                || /^192\.168\./.test(host)
+                || /^10\./.test(host)
+                || /^172\.(1[6-9]|2[0-9]|3[01])\./.test(host);
+            if (isLocal) {
+                obsSection.style.display = 'block';
+            }
+        }
 
         document.getElementById('castStartBtn').addEventListener('click', () => {
             if (peer) { peer.destroy(); peer = null; sessionCode = null; }
@@ -706,6 +748,8 @@ function renderTVCardsE(containerId, p) {
             teamPenaltiesE[p].red = 0; 
         });
         
+        relayTouches = 0;
+        if (teamTouchesCount) teamTouchesCount.textContent = '0';
         scoreHistory.length = 0;
         leftScoreDisplay.textContent = '0'; rightScoreDisplay.textContent = '0';
         matchChronoDisplay.textContent = '03:00';
