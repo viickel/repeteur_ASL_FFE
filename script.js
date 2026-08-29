@@ -121,6 +121,25 @@ const teamPenaltiesE = {
             return;
         }
 
+
+        // Le navigateur bloque ws:// depuis une page HTTPS (Mixed Content).
+        // On détecte ce cas et on informe l'utilisateur.
+        if (window.location.protocol === 'https:') {
+            updateOBSStatus('https-block');
+            const httpUrl = 'http://' + window.location.host + window.location.pathname;
+            const obsMsg = [
+                '⚠ Connexion OBS impossible',
+                '',
+                'Le site est en HTTPS mais le serveur OBS tourne en HTTP local.',
+                'Le navigateur bloque cette connexion.',
+                '',
+                'Solution : ouvre le répéteur via HTTP :',
+                httpUrl
+            ].join('\n');
+            showNotification(obsMsg, 'yellow');
+            return;
+        }
+
         const url = `ws://${ip}:3000?role=tablet&arena=${arenaId}`;
         obsWs = new WebSocket(url);
         obsWs.onopen  = () => {
@@ -577,6 +596,7 @@ function renderTVCardsE(containerId, p) {
             <hr style="border-color:#30363d;margin:1.5em 0;">
             <input id="castCodeInput" type="text" placeholder="ASL-XXXX" style="width:100%;background:#0d1117;border:2px solid #30363d;border-radius:8px;padding:10px;color:#c9d1d9;font-size:18px;text-align:center;font-weight:bold;text-transform:uppercase;margin-bottom:10px;">
             <button id="castConnectBtn" style="background:#0cc346;color:#0d1117;border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:bold;cursor:pointer;width:100%;">MODE TV</button>
+            <div id="obsCastSection" style="display:none;">
             <hr style="border-color:#30363d;margin:1.5em 0;">
             <div style="margin-bottom:10px;font-size:0.85rem;color:#8b949e;letter-spacing:1px;">🎥 OBS STREAMING</div>
             <div style="display:flex;gap:6px;margin-bottom:8px;">
@@ -593,9 +613,25 @@ function renderTVCardsE(containerId, p) {
                 Connecter au serveur OBS
             </button>
             <div id="obsStatus" style="font-size:0.78rem;color:#8b949e;text-align:center;min-height:18px;">🎥 OBS Streaming</div>
+            </div>
             <button id="castCloseBtn" style="margin-top:1.5em;background:transparent;border:1px solid #30363d;color:#8b949e;border-radius:8px;padding:8px 20px;cursor:pointer;">Fermer</button>
         </div>`;
         document.body.appendChild(modal);
+
+        // Affiche la section OBS uniquement si on est sur un réseau local (pas GitHub Pages)
+        // Détection : hostname = localhost, IP locale (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+        const obsSection = document.getElementById('obsCastSection');
+        if (obsSection) {
+            const host = window.location.hostname;
+            const isLocal = host === 'localhost'
+                || host === '127.0.0.1'
+                || /^192\.168\./.test(host)
+                || /^10\./.test(host)
+                || /^172\.(1[6-9]|2[0-9]|3[01])\./.test(host);
+            if (isLocal) {
+                obsSection.style.display = 'block';
+            }
+        }
 
         document.getElementById('castStartBtn').addEventListener('click', () => {
             if (peer) { peer.destroy(); peer = null; sessionCode = null; }
