@@ -12,8 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let isTeamMode = false;
     let relayTouches = 0;
     let relayPauseTimerId;
-    let relayScoreLeft  = 0;  // Points marqués pendant le relais en cours
-    let relayScoreRight = 0;
 
 
     const scoreHistory = [];
@@ -121,25 +119,6 @@ const teamPenaltiesE = {
             return;
         }
 
-
-        // Le navigateur bloque ws:// depuis une page HTTPS (Mixed Content).
-        // On détecte ce cas et on informe l'utilisateur.
-        if (window.location.protocol === 'https:') {
-            updateOBSStatus('https-block');
-            const httpUrl = 'http://' + window.location.host + window.location.pathname;
-            const obsMsg = [
-                '⚠ Connexion OBS impossible',
-                '',
-                'Le site est en HTTPS mais le serveur OBS tourne en HTTP local.',
-                'Le navigateur bloque cette connexion.',
-                '',
-                'Solution : ouvre le répéteur via HTTP :',
-                httpUrl
-            ].join('\n');
-            showNotification(obsMsg, 'yellow');
-            return;
-        }
-
         const url = `ws://${ip}:3000?role=tablet&arena=${arenaId}`;
         obsWs = new WebSocket(url);
         obsWs.onopen  = () => {
@@ -169,8 +148,6 @@ const teamPenaltiesE = {
                 rightName:       rightNameInput ? rightNameInput.value.trim() : 'VERT',
                 teamPenaltiesE:  teamPenaltiesE,
                 relayTouches:    relayTouches,
-                relayScoreLeft:  relayScoreLeft,
-                relayScoreRight: relayScoreRight,
                 isTeamMode:      isTeamMode
             }));
         } catch(e) { console.warn('[OBS] Erreur envoi:', e); }
@@ -250,9 +227,7 @@ const teamPenaltiesE = {
                     leftName: leftNameInput ? leftNameInput.value.trim() : 'ROUGE',
                     rightName: rightNameInput ? rightNameInput.value.trim() : 'VERT',
                     teamPenaltiesE: teamPenaltiesE,
-                    relayTouches:   relayTouches,
-                    relayScoreLeft:  relayScoreLeft,
-                    relayScoreRight: relayScoreRight,
+                    relayTouches: relayTouches,
                     isTeamMode: isTeamMode
                 });
             } catch(e) { console.warn('broadcast PeerJS error:', e); }
@@ -339,31 +314,9 @@ const teamPenaltiesE = {
             font-weight:900;
             line-height:0.9;
             font-variant-numeric:tabular-nums;
-            display:flex;
-            align-items:baseline;
-            justify-content:center;
-            gap:0.15em;
         }
         .tv-lc{color:#ff004c; text-shadow:0 0 60px rgba(255,0,76,.4);}
         .tv-rc{color:#0cc346; text-shadow:0 0 60px rgba(12,195,70,.4);}
-
-        /* Badge score relais dans le cast TV */
-        .tv-relay-badge{
-            font-size:0.32em;
-            font-weight:700;
-            font-variant-numeric:tabular-nums;
-            padding:4px 14px;
-            border-radius:30px;
-            background:rgba(255,255,255,0.08);
-            border:2px solid rgba(255,255,255,0.15);
-            letter-spacing:1px;
-            align-self:center;
-            line-height:1;
-            display:none; /* masqué hors mode équipe */
-        }
-        .tv-lc .tv-relay-badge{color:#ff6680; border-color:rgba(255,0,76,0.35); background:rgba(255,0,76,0.1);}
-        .tv-rc .tv-relay-badge{color:#2ecc71; border-color:rgba(12,195,70,0.35); background:rgba(12,195,70,0.1);}
-        .team-mode .tv-relay-badge{display:inline-block;}
 
         /* Cartons classiques */
         .tv-cards{display:flex;gap:6px;margin-top:14px;min-height:36px;align-items:center;justify-content:center;}
@@ -469,7 +422,7 @@ const teamPenaltiesE = {
             <div class="tv-side">
                 <div class="tv-name-bar red-bar" id="tv-left-name">ROUGE</div>
                 <div class="tv-score-area">
-                    <div class="tv-score tv-lc" id="tv-left">0<span class="tv-relay-badge" id="tv-relay-left">00</span></div>
+                    <div class="tv-score tv-lc" id="tv-left">0</div>
                     <div class="tv-cards" id="tv-cards-left"></div>
                     <div class="tv-cards-e" id="tv-cards-e-left"></div>
                 </div>
@@ -487,7 +440,7 @@ const teamPenaltiesE = {
             <div class="tv-side">
                 <div class="tv-name-bar green-bar" id="tv-right-name">VERT</div>
                 <div class="tv-score-area">
-                    <div class="tv-score tv-rc" id="tv-right">0<span class="tv-relay-badge" id="tv-relay-right">00</span></div>
+                    <div class="tv-score tv-rc" id="tv-right">0</div>
                     <div class="tv-cards" id="tv-cards-right"></div>
                     <div class="tv-cards-e" id="tv-cards-e-right"></div>
                 </div>
@@ -519,18 +472,6 @@ function renderTVState(data) {
     const set = (id, v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
     set('tv-left',  data.left);
     set('tv-right', data.right);
-
-    // Badge score relais
-    const pad = n => String(Math.max(0, n || 0)).padStart(2, '0');
-    const badgeL = document.getElementById('tv-relay-left');
-    const badgeR = document.getElementById('tv-relay-right');
-    if (badgeL) badgeL.textContent = pad(data.relayScoreLeft  || 0);
-    if (badgeR) badgeR.textContent = pad(data.relayScoreRight || 0);
-
-    // Classe team-mode sur body pour afficher/masquer les badges
-    const body = document.body;
-    if (data.isTeamMode) body.classList.add('team-mode');
-    else                  body.classList.remove('team-mode');
     set('tv-chrono', data.time);
     set('tv-left-name',  data.leftName  || 'ROUGE');
     set('tv-right-name', data.rightName || 'VERT');
@@ -596,7 +537,6 @@ function renderTVCardsE(containerId, p) {
             <hr style="border-color:#30363d;margin:1.5em 0;">
             <input id="castCodeInput" type="text" placeholder="ASL-XXXX" style="width:100%;background:#0d1117;border:2px solid #30363d;border-radius:8px;padding:10px;color:#c9d1d9;font-size:18px;text-align:center;font-weight:bold;text-transform:uppercase;margin-bottom:10px;">
             <button id="castConnectBtn" style="background:#0cc346;color:#0d1117;border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:bold;cursor:pointer;width:100%;">MODE TV</button>
-            <div id="obsCastSection" style="display:none;">
             <hr style="border-color:#30363d;margin:1.5em 0;">
             <div style="margin-bottom:10px;font-size:0.85rem;color:#8b949e;letter-spacing:1px;">🎥 OBS STREAMING</div>
             <div style="display:flex;gap:6px;margin-bottom:8px;">
@@ -613,25 +553,9 @@ function renderTVCardsE(containerId, p) {
                 Connecter au serveur OBS
             </button>
             <div id="obsStatus" style="font-size:0.78rem;color:#8b949e;text-align:center;min-height:18px;">🎥 OBS Streaming</div>
-            </div>
             <button id="castCloseBtn" style="margin-top:1.5em;background:transparent;border:1px solid #30363d;color:#8b949e;border-radius:8px;padding:8px 20px;cursor:pointer;">Fermer</button>
         </div>`;
         document.body.appendChild(modal);
-
-        // Affiche la section OBS uniquement si on est sur un réseau local (pas GitHub Pages)
-        // Détection : hostname = localhost, IP locale (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
-        const obsSection = document.getElementById('obsCastSection');
-        if (obsSection) {
-            const host = window.location.hostname;
-            const isLocal = host === 'localhost'
-                || host === '127.0.0.1'
-                || /^192\.168\./.test(host)
-                || /^10\./.test(host)
-                || /^172\.(1[6-9]|2[0-9]|3[01])\./.test(host);
-            if (isLocal) {
-                obsSection.style.display = 'block';
-            }
-        }
 
         document.getElementById('castStartBtn').addEventListener('click', () => {
             if (peer) { peer.destroy(); peer = null; sessionCode = null; }
@@ -661,19 +585,6 @@ function renderTVCardsE(containerId, p) {
     }
 
     // ========= UTILITAIRES =========
-
-    // Affiche le score : en mode équipe → "TOTAL — RR", sinon juste le total
-    function updateScoreDisplays() {
-        if (isTeamMode) {
-            const pad = n => String(n).padStart(2, '0');
-            leftScoreDisplay.innerHTML  = `${currentMatchScoreLeft}<span class="relay-score-badge">${pad(relayScoreLeft)}</span>`;
-            rightScoreDisplay.innerHTML = `${currentMatchScoreRight}<span class="relay-score-badge">${pad(relayScoreRight)}</span>`;
-        } else {
-            leftScoreDisplay.textContent  = currentMatchScoreLeft;
-            rightScoreDisplay.textContent = currentMatchScoreRight;
-        }
-    }
-
     function formatTime(s) { return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`; }
 
     window.adjustScore = function(player, points) { // Rendue globale pour oncontextmenu
@@ -711,14 +622,8 @@ function renderTVCardsE(containerId, p) {
     }
 
     function applyScore(player, points) {
-        if (player === 'left') {
-            currentMatchScoreLeft = Math.max(0, currentMatchScoreLeft + points);
-            if (isTeamMode && points > 0) relayScoreLeft = Math.max(0, relayScoreLeft + points);
-        } else {
-            currentMatchScoreRight = Math.max(0, currentMatchScoreRight + points);
-            if (isTeamMode && points > 0) relayScoreRight = Math.max(0, relayScoreRight + points);
-        }
-        updateScoreDisplays();
+        if (player === 'left') { currentMatchScoreLeft = Math.max(0, currentMatchScoreLeft + points); leftScoreDisplay.textContent = currentMatchScoreLeft; } 
+        else { currentMatchScoreRight = Math.max(0, currentMatchScoreRight + points); rightScoreDisplay.textContent = currentMatchScoreRight; }
     }
 
    function undoLastAction() {
@@ -755,7 +660,8 @@ function renderTVCardsE(containerId, p) {
     relayTouches = prev.touches || 0;
     
     // Mise à jour de l'UI
-    updateScoreDisplays();
+    leftScoreDisplay.textContent = currentMatchScoreLeft; 
+    rightScoreDisplay.textContent = currentMatchScoreRight;
     updateCardDisplay(); 
     updateRelayUI(); 
     updateTeamCardEDisplay(); 
@@ -825,10 +731,8 @@ function renderTVCardsE(containerId, p) {
             teamPenaltiesE[p].red = 0; 
         });
         
-        relayScoreLeft  = 0;
-        relayScoreRight = 0;
         scoreHistory.length = 0;
-        updateScoreDisplays();
+        leftScoreDisplay.textContent = '0'; rightScoreDisplay.textContent = '0';
         matchChronoDisplay.textContent = '03:00';
         startStopButton.textContent = 'START'; startStopButton.style.backgroundColor = 'green';
         resetBtn.style.display = 'none'; medicalOverlay.classList.add('hidden');
@@ -881,8 +785,6 @@ function renderTVCardsE(containerId, p) {
         isTeamMode = !isTeamMode;
         teamModeBtn.style.backgroundColor = isTeamMode ? '#007bff' : 'transparent';
         teamModeBtn.style.color = isTeamMode ? 'white' : '#007bff';
-        relayScoreLeft = 0; relayScoreRight = 0;
-        updateScoreDisplays();
         
         // Sélectionne tous les éléments de l'interface Équipe
         const teamElements = document.querySelectorAll('.team-E-ui');
@@ -924,29 +826,7 @@ function renderTVCardsE(containerId, p) {
         if (isTimerRunning) { clearInterval(timerId); isTimerRunning = false; startStopButton.textContent = 'START'; startStopButton.style.backgroundColor = 'green'; }
         
         relayOverlay.classList.remove('hidden');
-
-        // Affiche les scores dans la popup relais
-        const relayScoreInfoEl = document.getElementById('relayScoreInfo');
-        if (relayScoreInfoEl) {
-            const pad = n => String(n).padStart(2, '0');
-            const leftName  = leftNameInput  ? (leftNameInput.value.trim()  || 'ROUGE') : 'ROUGE';
-            const rightName = rightNameInput ? (rightNameInput.value.trim() || 'VERT')  : 'VERT';
-            relayScoreInfoEl.innerHTML = `
-                <div style="display:flex;gap:12px;justify-content:center;margin-bottom:16px;">
-                    <div style="flex:1;background:rgba(255,0,76,0.12);border:1px solid rgba(255,0,76,0.4);border-radius:10px;padding:10px;">
-                        <div style="font-size:11px;color:#ff004c;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">${leftName}</div>
-                        <div style="font-size:2rem;font-weight:900;color:#fff;">${currentMatchScoreLeft} <span style="font-size:1rem;color:#ff004c;">— ${pad(relayScoreLeft)}</span></div>
-                        <div style="font-size:10px;color:#555;margin-top:2px;">total — relais</div>
-                    </div>
-                    <div style="flex:1;background:rgba(12,195,70,0.12);border:1px solid rgba(12,195,70,0.4);border-radius:10px;padding:10px;">
-                        <div style="font-size:11px;color:#0cc346;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">${rightName}</div>
-                        <div style="font-size:2rem;font-weight:900;color:#fff;">${currentMatchScoreRight} <span style="font-size:1rem;color:#0cc346;">— ${pad(relayScoreRight)}</span></div>
-                        <div style="font-size:10px;color:#555;margin-top:2px;">total — relais</div>
-                    </div>
-                </div>`;
-        }
-
-        let t = 60; // 1 minute de réflexion
+        let t = 60; // 1 minute de réflexion [cite: 27]
         relayTimerDisplay.textContent = formatTime(t);
         
         relayPauseTimerId = setInterval(() => {
@@ -962,11 +842,8 @@ function renderTVCardsE(containerId, p) {
     nextRelayBtn.addEventListener('click', () => {
         clearInterval(relayPauseTimerId);
         relayOverlay.classList.add('hidden');
-        relayTouches   = 0;
-        relayScoreLeft  = 0;
-        relayScoreRight = 0;
+        relayTouches = 0;
         updateRelayUI();
-        updateScoreDisplays();
         
         // IMPORTANT : Remise à zéro propre pour le nouveau relais
         ['left', 'right'].forEach(p => {
@@ -1146,6 +1023,17 @@ function updateTeamCardEDisplay() {
     pointButtons.forEach(btn => btn.addEventListener('click', () => { 
         handlePointScored(btn.dataset.player, parseInt(btn.dataset.points, 10)); 
     }));
+
+    // Pénalité de sortie d'arène (mode équipe uniquement)
+    // → 3 pts à l'adversaire, SANS incrémenter relayTouches ni les cartons
+    document.querySelectorAll('.penalty-exit-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const beneficiary = btn.dataset.beneficiary;
+            saveStateToHistory();
+            applyScore(beneficiary, 3);
+            broadcastState();
+        });
+    });
    
     faultButtons.forEach(btn => btn.addEventListener('click', () => { if (!btn.dataset.group) return; // Ignore les boutons Équipe E qui n'ont pas de data-group
     const s = determineCardAndPoints(btn.dataset.player, parseInt(btn.dataset.group, 10)); 
