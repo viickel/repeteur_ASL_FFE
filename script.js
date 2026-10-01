@@ -787,6 +787,11 @@ function renderTVCardsE(containerId, p) {
             teamPenaltiesE[p].white = 0;
             teamPenaltiesE[p].yellow = 0;
             teamPenaltiesE[p].red = 0; 
+
+            relayTouches   = 0;
+            relayScoreLeft  = 0;
+            relayScoreRight = 0;
+            if (teamTouchesCount) teamTouchesCount.textContent = '0';
         });
         
         relayScoreLeft  = 0;
