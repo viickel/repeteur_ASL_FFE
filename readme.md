@@ -5,6 +5,8 @@ https://viickel.github.io/repeteur_ASL_FFE/
 
 Outil d'arbitrage au sabre laser réactif conçu pour la gestion du temps, des scores et des sanctions lors de matchs de sabre laser. Interface optimisée pour le tactile (tablette/smartphone) et contrôlable au clavier pour une précision maximale en tournoi.
 
+Pour ne pas surcharger les fonctionnalité et rester souple avec les évolution de reglements cette application ce comporte comme un simple compteur, il permet donc de changer les temps et n'est pas bloquer au niveau du comptage des points. Cet appli peut etre utiliser en club ou bien en compétition. le mode cast permet de connecter facilement un second ecran avec navigateur web compatible et de changer son interface pour un affichage combatant inspiré des répéteur d'escrime traditionel.
+
 ## ✨ Fonctionnalités Clés
 
 * **Chronomètre:** Fonctionnalités START/PAUSE/RÉGLAGE (personnalisé ou 30s pour la morts subit, il faut cliquer sur le chrono pour afficher les fonction).
@@ -12,6 +14,8 @@ Outil d'arbitrage au sabre laser réactif conçu pour la gestion du temps, des s
 * **Système de Sanctions:** Gestion des fautes avec progression de cartons et affichage visuel de l'état des pénalités pour chaque combattant.
 * **Élimination (Carton Noir):** Déclenche une alerte de fin de match et d'élimination.
 * **Interface Réactive:** Design optimisé pour les écrans de bureau et les smartphones.
+
+* **Mode par équipe** Un mode par équipe est inclus en mode test (Notament suite a la riposte des Amazones a Metz) il n'est pas encore officiel ASL-FFE mais le projet suivra les évolution réglementaire a ce sujet.
 
 ## 📖 Notice d'utilisation
 
