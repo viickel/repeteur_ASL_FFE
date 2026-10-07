@@ -86,6 +86,4 @@ F5 → Réinitialiser le match
 
 Les contributions sont les bienvenues ! Si vous avez des suggestions de fonctionnalités, des corrections de bugs, ou des idées pour améliorer le design, n'hésitez pas à ouvrir une *issue* ou soumettre une *pull request*.
 
-## 📄 Licence
 
-Ce projet est distribué sous licence MIT.
