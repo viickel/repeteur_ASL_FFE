@@ -315,36 +315,30 @@ const teamPenaltiesE = {
             padding:10px 20px;
         }
 
-        .tv-score{
-            font-size:clamp(4rem,20vw,18rem);
-            font-weight:900;
-            line-height:0.9;
-            font-variant-numeric:tabular-nums;
+        /* Zone score : colonne total + relais */
+        .tv-score-area{
             display:flex;
-            align-items:baseline;
-            justify-content:center;
-            gap:0.15em;
+            flex-direction:column;
+            align-items:center;
+            gap:4px;
         }
+        .tv-score{
+            font-size:clamp(4rem,18vw,15rem);
+            font-weight:900;
+            line-height:1;
+            font-variant-numeric:tabular-nums;
+        }
+        /* Score relais sous le total */
+        .tv-score-relay{
+            font-size:clamp(2rem,8vw,7rem);
+            font-weight:900;
+            font-variant-numeric:tabular-nums;
+            opacity:0.80;
+            display:none;
+        }
+        body.team-mode .tv-score-relay{display:block;}
         .tv-lc{color:#ff004c; text-shadow:0 0 60px rgba(255,0,76,.4);}
         .tv-rc{color:#0cc346; text-shadow:0 0 60px rgba(12,195,70,.4);}
-
-        /* Badge score relais dans le cast TV */
-        .tv-relay-badge{
-            font-size:0.32em;
-            font-weight:700;
-            font-variant-numeric:tabular-nums;
-            padding:4px 14px;
-            border-radius:30px;
-            background:rgba(255,255,255,0.08);
-            border:2px solid rgba(255,255,255,0.15);
-            letter-spacing:1px;
-            align-self:center;
-            line-height:1;
-            display:none; /* masqué hors mode équipe */
-        }
-        .tv-lc .tv-relay-badge{color:#ff6680; border-color:rgba(255,0,76,0.35); background:rgba(255,0,76,0.1);}
-        .tv-rc .tv-relay-badge{color:#2ecc71; border-color:rgba(12,195,70,0.35); background:rgba(12,195,70,0.1);}
-        .team-mode .tv-relay-badge{display:inline-block;}
 
         /* Cartons classiques */
         .tv-cards{display:flex;gap:6px;margin-top:14px;min-height:36px;align-items:center;justify-content:center;}
@@ -423,15 +417,13 @@ const teamPenaltiesE = {
 
         /* Touches relais (mode équipe) */
         #tv-relay{
-            font-size:clamp(0.65rem,1.2vw,0.9rem);
+            font-size:clamp(2rem,7vw,6rem);
+            font-weight:900;
             color:#e4c700;
-            font-weight:700;
-            letter-spacing:1px;
+            letter-spacing:3px;
             text-align:center;
-            padding:6px 12px;
-            background:rgba(228,199,0,0.1);
-            border:1px solid rgba(228,199,0,0.3);
-            border-radius:8px;
+            font-variant-numeric:tabular-nums;
+            text-shadow:0 0 20px rgba(228,199,0,0.5);
             display:none;
         }
         #tv-relay.active{display:block;}
@@ -450,7 +442,10 @@ const teamPenaltiesE = {
             <div class="tv-side">
                 <div class="tv-name-bar red-bar" id="tv-left-name">ROUGE</div>
                 <div class="tv-score-area">
-                    <div class="tv-score tv-lc" id="tv-left">0<span class="tv-relay-badge" id="tv-relay-left">00</span></div>
+                    <div class="tv-score-area">
+                        <div class="tv-score tv-lc" id="tv-left">0</div>
+                        <div class="tv-score-relay tv-lc" id="tv-relay-score-left">00</div>
+                    </div>
                     <div class="tv-cards" id="tv-cards-left"></div>
                     <div class="tv-cards-e" id="tv-cards-e-left"></div>
                 </div>
@@ -461,14 +456,17 @@ const teamPenaltiesE = {
                 <div class="tv-center-label">TEMPS</div>
                 <div id="tv-chrono">03:00</div>
                 <div id="tv-vs">VS</div>
-                <div id="tv-relay">⚡ 0 / 5 touches</div>
+                <div id="tv-relay"> 0 / 5 touches</div>
             </div>
 
             <!-- Côté VERT -->
             <div class="tv-side">
                 <div class="tv-name-bar green-bar" id="tv-right-name">VERT</div>
                 <div class="tv-score-area">
-                    <div class="tv-score tv-rc" id="tv-right">0<span class="tv-relay-badge" id="tv-relay-right">00</span></div>
+                    <div class="tv-score-area">
+                        <div class="tv-score tv-rc" id="tv-right">0</div>
+                        <div class="tv-score-relay tv-rc" id="tv-relay-score-right">00</div>
+                    </div>
                     <div class="tv-cards" id="tv-cards-right"></div>
                     <div class="tv-cards-e" id="tv-cards-e-right"></div>
                 </div>
@@ -498,41 +496,43 @@ const teamPenaltiesE = {
 
 function renderTVState(data) {
     const set = (id, v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
-    set('tv-left',  data.left);
-    set('tv-right', data.right);
-
-    // Badge score relais
     const pad = n => String(Math.max(0, n || 0)).padStart(2, '0');
-    const badgeL = document.getElementById('tv-relay-left');
-    const badgeR = document.getElementById('tv-relay-right');
-    if (badgeL) badgeL.textContent = pad(data.relayScoreLeft  || 0);
-    if (badgeR) badgeR.textContent = pad(data.relayScoreRight || 0);
 
-    // Classe team-mode sur body pour afficher/masquer les badges
-    const body = document.body;
-    if (data.isTeamMode) body.classList.add('team-mode');
-    else                  body.classList.remove('team-mode');
-    set('tv-chrono', data.time);
+    // Scores et noms
+    set('tv-left',       data.left);
+    set('tv-right',      data.right);
+    set('tv-chrono',     data.time);
     set('tv-left-name',  data.leftName  || 'ROUGE');
     set('tv-right-name', data.rightName || 'VERT');
 
-    // Chrono : état visuel
+    // Chrono état visuel
     const ch = document.getElementById('tv-chrono');
     if (ch) ch.className = data.medical ? 'medical' : (data.running ? 'running' : '');
+
+    // Double compteur relais (empilé sous le score total)
+    const rsl = document.getElementById('tv-relay-score-left');
+    const rsr = document.getElementById('tv-relay-score-right');
+    if (rsl) rsl.textContent = pad(data.relayScoreLeft  || 0);
+    if (rsr) rsr.textContent = pad(data.relayScoreRight || 0);
+
+    // team-mode sur body → affiche/masque les scores relais
+    if (data.isTeamMode) document.body.classList.add('team-mode');
+    else                  document.body.classList.remove('team-mode');
 
     // Cartons classiques
     renderTVCards('tv-cards-left',  data.penalties.left);
     renderTVCards('tv-cards-right', data.penalties.right);
 
-    // Cartons E — badges compacts
+    // Cartons E
     renderTVCardsE('tv-cards-e-left',  data.teamPenaltiesE ? data.teamPenaltiesE.left  : null);
     renderTVCardsE('tv-cards-e-right', data.teamPenaltiesE ? data.teamPenaltiesE.right : null);
 
-    // Touches relais
+    // Compteur touches — grand et jaune
     const relayEl = document.getElementById('tv-relay');
     if (relayEl) {
-        if (data.relayTouches !== undefined && data.isTeamMode) {
-            relayEl.textContent = `⚡ ${data.relayTouches} / 5 touches`;
+        if (data.isTeamMode && data.relayTouches !== undefined) {
+            const rem = Math.max(0, 5 - data.relayTouches);
+            relayEl.textContent = ` ${rem}`;
             relayEl.classList.add('active');
         } else {
             relayEl.classList.remove('active');
@@ -571,12 +571,34 @@ function renderTVCardsE(containerId, p) {
         modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;justify-content:center;align-items:center;z-index:3000;';
         modal.innerHTML = `
         <div style="background:#161b22;border:2px solid #30363d;border-radius:16px;padding:2em;max-width:420px;width:90%;color:#c9d1d9;text-align:center;">
-            <h2 style="margin:0 0 1em;">📺 CAST TV</h2>
-            <button id="castStartBtn" style="background:#007bff;color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:16px;font-weight:bold;cursor:pointer;width:100%;margin-bottom:15px;">📡 Générer le Code</button>
-            <div id="castCodeDisplay" style="display:none;font-size:2.2em;font-weight:bold;letter-spacing:8px;color:#e4c700;padding:12px;background:#0d1117;border-radius:8px;border:1px solid #30363d;"></div>
-            <hr style="border-color:#30363d;margin:1.5em 0;">
-            <input id="castCodeInput" type="text" placeholder="ASL-XXXX" style="width:100%;background:#0d1117;border:2px solid #30363d;border-radius:8px;padding:10px;color:#c9d1d9;font-size:18px;text-align:center;font-weight:bold;text-transform:uppercase;margin-bottom:10px;">
-            <button id="castConnectBtn" style="background:#0cc346;color:#0d1117;border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:bold;cursor:pointer;width:100%;">MODE TV</button>
+            <h2 style="margin:0 0 0.8em;">📺 CAST TV</h2>
+            <!-- TABLETTE : saisit le code affiché sur la TV -->
+            <p style="color:#8b949e;font-size:12px;margin-bottom:8px;text-align:left;">
+                📱 <strong style="color:#c9d1d9;">Tablette arbitre</strong> — entre le code affiché sur la TV :
+            </p>
+            <div style="display:flex;gap:8px;margin-bottom:6px;">
+                <input id="castCodeInput" type="text" placeholder="ASL-XXXX"
+                    style="flex:1;background:#0d1117;border:2px solid #30363d;border-radius:8px;
+                           padding:10px;color:#c9d1d9;font-size:18px;text-align:center;
+                           font-weight:bold;text-transform:uppercase;">
+                <button id="castConnectBtn" style="background:#0cc346;color:#0d1117;border:none;
+                        border-radius:8px;padding:10px 16px;font-size:14px;font-weight:bold;cursor:pointer;">
+                    📡 Connecter
+                </button>
+            </div>
+            <hr style="border-color:#30363d;margin:1.2em 0;">
+            <!-- TV : génère le code sur cet appareil -->
+            <p style="color:#8b949e;font-size:12px;margin-bottom:8px;text-align:left;">
+                📺 <strong style="color:#c9d1d9;">Grand écran / TV</strong> — génère le code ici :
+            </p>
+            <button id="castStartBtn" style="background:#1a3a5c;color:#5af;border:1px solid #1a5490;
+                    border-radius:8px;padding:10px 20px;font-size:14px;font-weight:bold;
+                    cursor:pointer;width:100%;">
+                📺 Passer en mode affichage TV
+            </button>
+            <div id="castCodeDisplay" style="display:none;margin-top:10px;font-size:2.2em;
+                    font-weight:bold;letter-spacing:8px;color:#e4c700;padding:12px;
+                    background:#0d1117;border-radius:8px;border:1px solid #30363d;text-align:center;"></div>
             <hr style="border-color:#30363d;margin:1.5em 0;">
             <div style="margin-bottom:10px;font-size:0.85rem;color:#8b949e;letter-spacing:1px;">🎥 OBS STREAMING</div>
             <div style="display:flex;gap:6px;margin-bottom:8px;">
@@ -597,18 +619,28 @@ function renderTVCardsE(containerId, p) {
         </div>`;
         document.body.appendChild(modal);
 
+        // ── Bouton "Mode Affichage TV" : CET appareil devient la TV ──
+        // Il génère un code que la tablette arbitre devra saisir
         document.getElementById('castStartBtn').addEventListener('click', () => {
             if (peer) { peer.destroy(); peer = null; sessionCode = null; }
-            initPeerAsController();
+            initPeerAsController(); // génère le code ASL-XXXX affiché sur cet écran
             document.getElementById('castCodeDisplay').style.display = 'block';
             document.getElementById('castCodeDisplay').textContent = '⏳...';
-            const wait = setInterval(() => { if (sessionCode) { clearInterval(wait); document.getElementById('castCodeDisplay').textContent = sessionCode; } }, 300);
+            const wait = setInterval(() => {
+                if (sessionCode) {
+                    clearInterval(wait);
+                    document.getElementById('castCodeDisplay').textContent = sessionCode;
+                }
+            }, 300);
         });
 
+        // ── Bouton "Connecter" : la TABLETTE arbitre saisit le code affiché sur la TV ──
+        // Elle devient le contrôleur qui envoie les données vers la TV
         document.getElementById('castConnectBtn').addEventListener('click', () => {
             const code = document.getElementById('castCodeInput').value.trim().toUpperCase();
-            if (!code.match(/^ASL-\d{4}$/)) { alert('Code invalide.'); return; }
-            modal.style.display = 'none'; initPeerAsTV(code);
+            if (!code.match(/^ASL-\d{4}$/)) { alert('Code invalide. Format : ASL-XXXX'); return; }
+            modal.style.display = 'none';
+            initPeerAsTV(code); // la tablette SE CONNECTE à la TV (qui est le contrôleur/pair)
         });
 
         document.getElementById('castCloseBtn').addEventListener('click', () => modal.style.display = 'none');
@@ -915,17 +947,22 @@ function renderTVCardsE(containerId, p) {
                 </div>`;
         }
 
-        let t = 60; // 1 minute de réflexion
+        let t = 60;
         relayTimerDisplay.textContent = formatTime(t);
-        
-        relayPauseTimerId = setInterval(() => {
-            t--;
-            relayTimerDisplay.textContent = formatTime(t);
-            if (t <= 0) {
-                clearInterval(relayPauseTimerId);
-                // Optionnel : Ajouter un son ici
-            }
-        }, 1000);
+
+        // Chrono ne démarre PAS automatiquement — l'arbitre clique sur "Démarrer"
+        const startChronoBtn = document.getElementById('startRelayChronoBtn');
+        if (startChronoBtn) {
+            startChronoBtn.style.display = 'block';
+            startChronoBtn.onclick = () => {
+                startChronoBtn.style.display = 'none';
+                relayPauseTimerId = setInterval(() => {
+                    t--;
+                    relayTimerDisplay.textContent = formatTime(t);
+                    if (t <= 0) clearInterval(relayPauseTimerId);
+                }, 1000);
+            };
+        }
     }
 
     nextRelayBtn.addEventListener('click', () => {
@@ -1122,6 +1159,16 @@ function updateTeamCardEDisplay() {
             const beneficiary = btn.dataset.beneficiary;
             saveStateToHistory();
             applyScore(beneficiary, 3);
+            broadcastState();
+        });
+    });
+
+    // Bonus riposte (open La Riposte des Amazones) — +2 pts, sans incrémenter relayTouches
+    document.querySelectorAll('.bonus-riposte-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const beneficiary = btn.dataset.beneficiary;
+            saveStateToHistory();
+            applyScore(beneficiary, 2);
             broadcastState();
         });
     });

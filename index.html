@@ -55,6 +55,30 @@
 .penalty-exit-btn:hover  { background: rgba(255,140,0,0.2); }
 .penalty-exit-btn:active { transform: scale(0.94); }
 </style>
+
+<style>
+.penalty-exit-btn, .bonus-riposte-btn {
+    flex: 1;
+    padding: 7px 4px;
+    font-size: clamp(10px, 2.4vw, 12px); font-weight: 700;
+    border-radius: 10px; cursor: pointer;
+    line-height: 1.3; min-height: 44px;
+    transition: background 0.15s, transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
+}
+.penalty-exit-btn {
+    border: 2px solid rgba(255,165,0,0.6);
+    background: rgba(255,140,0,0.1); color: #ffa500;
+}
+.penalty-exit-btn:hover  { background: rgba(255,140,0,0.2); }
+.penalty-exit-btn:active { transform: scale(0.94); }
+.bonus-riposte-btn {
+    border: 2px solid rgba(255,105,180,0.6);
+    background: rgba(255,105,180,0.1); color: #ff69b4;
+}
+.bonus-riposte-btn:hover  { background: rgba(255,105,180,0.22); }
+.bonus-riposte-btn:active { transform: scale(0.94); }
+</style>
 </head>
 <body>
 
@@ -102,10 +126,13 @@
                     <button class="point-btn point-btn-b" data-player="left"  data-points="3">Cible B<br>+3</button>
                     <button class="point-btn point-btn-c" data-player="left"  data-points="5">Cible C<br>+5</button>
                 </div>
-                <div class="button-row team-E-ui hidden" style="margin-top:5px;">
+                <div class="button-row team-E-ui hidden" style="margin-top:5px; gap:5px;">
                     <button class="penalty-exit-btn" data-penalized="left" data-beneficiary="right">
-                        🚫 Sortie Rouge<br><span style="font-size:0.8em;opacity:0.8;">+3 pts Vert</span>
+                        🚫 Sortie Rouge<br><span style="font-size:0.75em;opacity:0.8;">+3 pts Vert</span>
                     </button>
+                    <!-- <button class="bonus-riposte-btn" data-beneficiary="left">
+                        🌸 Riposte<br><span style="font-size:0.75em;opacity:0.8;">+2 pts Rouge</span>
+                    </button> Bouton temporaire pour la riposte des amazone a Metz -->
                 </div>
             </div>
             <div class="score-side points-section">
@@ -115,10 +142,13 @@
                     <button class="point-btn point-btn-b" data-player="right" data-points="3">Cible B<br>+3</button>
                     <button class="point-btn point-btn-c" data-player="right" data-points="5">Cible C<br>+5</button>
                 </div>
-                <div class="button-row team-E-ui hidden" style="margin-top:5px;">
+                <div class="button-row team-E-ui hidden" style="margin-top:5px; gap:5px;">
                     <button class="penalty-exit-btn" data-penalized="right" data-beneficiary="left">
-                        🚫 Sortie Vert<br><span style="font-size:0.8em;opacity:0.8;">+3 pts Rouge</span>
+                        🚫 Sortie Vert<br><span style="font-size:0.75em;opacity:0.8;">+3 pts Rouge</span>
                     </button>
+                   <!-- <button class="bonus-riposte-btn" data-beneficiary="right">
+                        🌸 Riposte<br><span style="font-size:0.75em;opacity:0.8;">+2 pts Vert</span>
+                    </button> Bouton temporaire pour la riposte des amazone a Metz -->
                 </div>
             </div>
         </div>
@@ -271,8 +301,14 @@
 
         <!-- Chrono de réflexion -->
         <div style="margin-bottom:8px; font-size:11px; color:#555; letter-spacing:2px; text-transform:uppercase;">Temps de réflexion</div>
-        <div id="relayTimer" style="font-size:3.5em; font-weight:900; color:#e4c700; margin-bottom:20px; font-variant-numeric:tabular-nums;">01:00</div>
-        
+        <div id="relayTimer" style="font-size:3.5em; font-weight:900; color:#e4c700; margin-bottom:12px; font-variant-numeric:tabular-nums;">01:00</div>
+
+        <button id="startRelayChronoBtn" style="display:none; width:100%; padding:12px; background:#e4a300;
+                color:#0d1117; border:none; border-radius:8px; font-size:16px; font-weight:bold;
+                cursor:pointer; margin-bottom:12px;">
+            ⏱ Démarrer le chrono de réflexion
+        </button>
+
         <button id="nextRelayBtn" style="width:100%; padding:15px; background:#0cc346; color:white; border:none; border-radius:8px; font-size:18px; font-weight:bold; cursor:pointer;">▶ MATCH SUIVANT</button>
     </div>
 </div>
