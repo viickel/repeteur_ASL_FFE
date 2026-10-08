@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isTeamMode = false;
     let relayTouches = 0;
     let relayPauseTimerId;
+    let relayPauseTimeRemaining = 0; // temps restant chrono réflexion (pour le cast TV)
     let relayScoreLeft  = 0;  // Points marqués pendant le relais en cours
     let relayScoreRight = 0;
 
@@ -149,10 +150,11 @@ const teamPenaltiesE = {
                 leftName:        leftNameInput ? leftNameInput.value.trim() : 'ROUGE',
                 rightName:       rightNameInput ? rightNameInput.value.trim() : 'VERT',
                 teamPenaltiesE:  teamPenaltiesE,
-                relayTouches:    relayTouches,
-                relayScoreLeft:  relayScoreLeft,
-                relayScoreRight: relayScoreRight,
-                isTeamMode:      isTeamMode
+                relayTouches:          relayTouches,
+                relayScoreLeft:        relayScoreLeft,
+                relayScoreRight:       relayScoreRight,
+                relayPauseTime:        relayPauseTimeRemaining,
+                isTeamMode:            isTeamMode
             }));
         } catch(e) { console.warn('[OBS] Erreur envoi:', e); }
     }
@@ -231,10 +233,11 @@ const teamPenaltiesE = {
                     leftName: leftNameInput ? leftNameInput.value.trim() : 'ROUGE',
                     rightName: rightNameInput ? rightNameInput.value.trim() : 'VERT',
                     teamPenaltiesE: teamPenaltiesE,
-                    relayTouches:   relayTouches,
-                    relayScoreLeft:  relayScoreLeft,
-                    relayScoreRight: relayScoreRight,
-                    isTeamMode: isTeamMode
+                    relayTouches:          relayTouches,
+                    relayScoreLeft:        relayScoreLeft,
+                    relayScoreRight:       relayScoreRight,
+                    relayPauseTime:        relayPauseTimeRemaining,
+                    isTeamMode:            isTeamMode
                 });
             } catch(e) { console.warn('broadcast PeerJS error:', e); }
         }
@@ -428,6 +431,32 @@ const teamPenaltiesE = {
         }
         #tv-relay.active{display:block;}
 
+        /* Chrono de réflexion entre relais */
+        #tv-relay-pause{
+            font-size:clamp(1.5rem,5vw,4rem);
+            font-weight:900;
+            color:#ff004c;
+            letter-spacing:3px;
+            text-align:center;
+            font-variant-numeric:tabular-nums;
+            text-shadow:0 0 20px rgba(255,0,76,0.5);
+            padding:6px 16px;
+            border:2px solid rgba(255,0,76,0.4);
+            border-radius:10px;
+            background:rgba(255,0,76,0.08);
+            display:none;
+        }
+        #tv-relay-pause.active{display:block;}
+        #tv-relay-pause-label{
+            font-size:clamp(0.6rem,1vw,0.85rem);
+            color:#ff004c;
+            letter-spacing:3px;
+            text-transform:uppercase;
+            opacity:0.7;
+            display:none;
+        }
+        #tv-relay-pause-label.active{display:block;}
+
         </style>
 
         <div id="tv-bar">
@@ -456,7 +485,9 @@ const teamPenaltiesE = {
                 <div class="tv-center-label">TEMPS</div>
                 <div id="tv-chrono">03:00</div>
                 <div id="tv-vs">VS</div>
-                <div id="tv-relay"> 0 / 5 touches</div>
+                <div id="tv-relay"> 0</div>
+                <div id="tv-relay-pause-label">⏱ Réflexion</div>
+                <div id="tv-relay-pause">01:00</div>
             </div>
 
             <!-- Côté VERT -->
@@ -538,6 +569,26 @@ function renderTVState(data) {
             relayEl.classList.remove('active');
         }
     }
+
+    // Chrono de réflexion entre relais
+    const pauseEl      = document.getElementById('tv-relay-pause');
+    const pauseLabelEl = document.getElementById('tv-relay-pause-label');
+    if (pauseEl && pauseLabelEl) {
+        if (data.relayPauseTime && data.relayPauseTime > 0) {
+            pauseEl.textContent = formatTVTime(data.relayPauseTime);
+            pauseEl.classList.add('active');
+            pauseLabelEl.classList.add('active');
+        } else {
+            pauseEl.classList.remove('active');
+            pauseLabelEl.classList.remove('active');
+        }
+    }
+}
+
+function formatTVTime(s) {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
 }
 
 function renderTVCardsE(containerId, p) {
@@ -576,16 +627,16 @@ function renderTVCardsE(containerId, p) {
             <p style="color:#8b949e;font-size:12px;margin-bottom:8px;text-align:left;">
                 📱 <strong style="color:#c9d1d9;">Tablette arbitre</strong> — entre le code affiché sur la TV :
             </p>
-            <div style="display:flex;gap:8px;margin-bottom:6px;">
-                <input id="castCodeInput" type="text" placeholder="ASL-XXXX"
-                    style="flex:1;background:#0d1117;border:2px solid #30363d;border-radius:8px;
-                           padding:10px;color:#c9d1d9;font-size:18px;text-align:center;
-                           font-weight:bold;text-transform:uppercase;">
-                <button id="castConnectBtn" style="background:#0cc346;color:#0d1117;border:none;
-                        border-radius:8px;padding:10px 16px;font-size:14px;font-weight:bold;cursor:pointer;">
-                    📡 Connecter
-                </button>
-            </div>
+            <input id="castCodeInput" type="text" placeholder="ASL-XXXX"
+                style="width:100%;background:#0d1117;border:2px solid #30363d;border-radius:8px;
+                       padding:12px;color:#c9d1d9;font-size:22px;text-align:center;
+                       font-weight:bold;text-transform:uppercase;letter-spacing:6px;
+                       margin-bottom:8px;">
+            <button id="castConnectBtn" style="background:#0cc346;color:#0d1117;border:none;
+                    border-radius:8px;padding:12px;font-size:16px;font-weight:bold;
+                    cursor:pointer;width:100%;margin-bottom:6px;">
+                📡 Connecter à la TV
+            </button>
             <hr style="border-color:#30363d;margin:1.2em 0;">
             <!-- TV : génère le code sur cet appareil -->
             <p style="color:#8b949e;font-size:12px;margin-bottom:8px;text-align:left;">
@@ -619,11 +670,10 @@ function renderTVCardsE(containerId, p) {
         </div>`;
         document.body.appendChild(modal);
 
-        // ── Bouton "Mode Affichage TV" : CET appareil devient la TV ──
-        // Il génère un code que la tablette arbitre devra saisir
+        // ── castStartBtn : sur la TABLETTE → génère le code, devient contrôleur ──
         document.getElementById('castStartBtn').addEventListener('click', () => {
             if (peer) { peer.destroy(); peer = null; sessionCode = null; }
-            initPeerAsController(); // génère le code ASL-XXXX affiché sur cet écran
+            initPeerAsController(); // tablette = contrôleur, génère le code
             document.getElementById('castCodeDisplay').style.display = 'block';
             document.getElementById('castCodeDisplay').textContent = '⏳...';
             const wait = setInterval(() => {
@@ -634,13 +684,12 @@ function renderTVCardsE(containerId, p) {
             }, 300);
         });
 
-        // ── Bouton "Connecter" : la TABLETTE arbitre saisit le code affiché sur la TV ──
-        // Elle devient le contrôleur qui envoie les données vers la TV
+        // ── castConnectBtn : sur la TV → saisit le code et passe en mode affichage ──
         document.getElementById('castConnectBtn').addEventListener('click', () => {
             const code = document.getElementById('castCodeInput').value.trim().toUpperCase();
             if (!code.match(/^ASL-\d{4}$/)) { alert('Code invalide. Format : ASL-XXXX'); return; }
             modal.style.display = 'none';
-            initPeerAsTV(code); // la tablette SE CONNECTE à la TV (qui est le contrôleur/pair)
+            initPeerAsTV(code); // TV = récepteur, se connecte au contrôleur (tablette)
         });
 
         document.getElementById('castCloseBtn').addEventListener('click', () => modal.style.display = 'none');
@@ -956,10 +1005,17 @@ function renderTVCardsE(containerId, p) {
             startChronoBtn.style.display = 'block';
             startChronoBtn.onclick = () => {
                 startChronoBtn.style.display = 'none';
+                relayPauseTimeRemaining = t;
                 relayPauseTimerId = setInterval(() => {
                     t--;
+                    relayPauseTimeRemaining = t;
                     relayTimerDisplay.textContent = formatTime(t);
-                    if (t <= 0) clearInterval(relayPauseTimerId);
+                    broadcastState(); // envoie le chrono de réflexion au cast TV
+                    if (t <= 0) {
+                        relayPauseTimeRemaining = 0;
+                        broadcastState();
+                        clearInterval(relayPauseTimerId);
+                    }
                 }, 1000);
             };
         }
@@ -967,8 +1023,9 @@ function renderTVCardsE(containerId, p) {
 
     nextRelayBtn.addEventListener('click', () => {
         clearInterval(relayPauseTimerId);
+        relayPauseTimeRemaining = 0;
         relayOverlay.classList.add('hidden');
-        relayTouches   = 0;
+        relayTouches    = 0;
         relayScoreLeft  = 0;
         relayScoreRight = 0;
         updateRelayUI();
